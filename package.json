@@ -3,14 +3,13 @@
     "version": "1.0.0",
     "description": "A full-stack application with React frontend and Node.js backend",
     "scripts": {
-    "start": "concurrently \"npm run start --prefix frontend\" \"npm run start --prefix backend\"",
-    "build": "npm run build --prefix frontend",
-    "install": "npm install --prefix frontend && npm install --prefix backend",
-    "i": "npm install --prefix frontend && npm install --prefix backend",
-    "dev": "concurrently \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\""
+        "start": "concurrently \"npm run start --prefix frontend\" \"npm run start --prefix backend\"",
+        "build": "npm run build --prefix frontend",
+        "install": "npm install --prefix frontend && npm install --prefix backend",
+        "i": "npm install --prefix frontend && npm install --prefix backend",
+        "dev": "concurrently \"npm run dev --prefix frontend\" \"npm run dev --prefix backend\""
     },
-    "dependencies": {
-    "concurrently": "^7.0.0"
-    },
-    "devDependencies": {}
+    "devDependencies": {
+        "concurrently": "^9.0.1"
+    }
 }

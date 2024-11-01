@@ -8,6 +8,7 @@ require('dotenv').config();
 
 // Import routes
 const userRoutes = require('./routes/api/userRoutes');
+const gameRoutes = require('./routes/api/gameRoutes')
 
 // Initialize Express app
 const app = express();
@@ -33,15 +34,11 @@ app.use(express.json());
 
 // API routes
 app.use('/api/users', userRoutes);
+app.use('/api/games', gameRoutes);
 
 // Serve static files from React frontend
 const reactPath = process.env.APPLICATION_STATE === 'production' ? '../frontend/build' : '../frontend/public';
 app.use(express.static(path.join(__dirname, reactPath)));
-
-// Catch-all to serve React app
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, reactPath, 'index.html'));
-});
 
 // Socket.IO setup
 io.on('connection', (socket) => {

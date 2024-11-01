@@ -11,5 +11,11 @@
     },
     "devDependencies": {
         "concurrently": "^9.0.1"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "express": "^4.21.1",
+        "nodemon": "^3.1.7",
+        "react-router-dom": "^6.27.0"
     }
 }

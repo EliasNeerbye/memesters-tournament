@@ -1,38 +1,63 @@
-
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-require('dotenv').config(); // Load environment variables from .env file
+const http = require('http');
+const mongoose = require('mongoose');
+const { Server } = require('socket.io');
+require('dotenv').config();
 
-// Create an instance of Express
+// Import routes
+const userRoutes = require('./routes/api/userRoutes');
+const gameRoutes = require('./routes/api/gameRoutes')
+
+// Initialize Express app
 const app = express();
-let reactWhere;
-if (process.env.APPLICATION_STATE == "production") {
-    reactWhere = "../frontend/build"
-} else {
-    reactWhere = "../frontend/public"
-}
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: 'http://localhost:3000',
+        methods: ['GET', 'POST']
+    }
+});
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
+.then(() => console.log("MongoDB connected"))
+.catch((err) => console.error("MongoDB connection error:", err));
 
 // Middleware
-app.use(cors(corsOptions)); // Enable CORS for all routes
-app.use(express.json()); // Parse JSON bodies
+app.use(cors());
+app.use(express.json());
 
-// Define API routes
-app.get('/api/users', (req, res) => {
-    // Example response
-    res.json([{ id: 1, name: 'John Doe' }, { id: 2, name: 'Jane Doe' }]);
+// API routes
+app.use('/api/users', userRoutes);
+app.use('/api/games', gameRoutes);
+
+// Serve static files from React frontend
+const reactPath = process.env.APPLICATION_STATE === 'production' ? '../frontend/build' : '../frontend/public';
+app.use(express.static(path.join(__dirname, reactPath)));
+
+// Socket.IO setup
+io.on('connection', (socket) => {
+    console.log(`New client connected: ${socket.id}`);
+    
+    // Example event listener for meme game actions
+    socket.on('memeAction', (data) => {
+        console.log(`Received meme action: ${data}`);
+        // Broadcast to all clients (or modify as needed)
+        io.emit('memeAction', data);
+    });
+    
+    socket.on('disconnect', () => {
+        console.log(`Client disconnected: ${socket.id}`);
+    });
 });
 
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, reactWhere)));
-
-// Catch-all handler to serve the React app for any other route
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, reactWhere, 'index.html'));
-});
-
-// Start the server
+// Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });

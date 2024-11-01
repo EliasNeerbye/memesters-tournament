@@ -4,60 +4,120 @@ const cors = require('cors');
 const http = require('http');
 const mongoose = require('mongoose');
 const { Server } = require('socket.io');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 // Import routes
 const userRoutes = require('./routes/api/userRoutes');
-const gameRoutes = require('./routes/api/gameRoutes')
+const gameRoutes = require('./routes/api/gameRoutes');
+const memeRoutes = require('./routes/api/memeRoutes');
+const authRoutes = require('./routes/api/authRoutes');
 
 // Initialize Express app
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: 'http://localhost:3000',
-        methods: ['GET', 'POST']
+        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        methods: ['GET', 'POST', 'PUT', 'DELETE']
     }
 });
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
-.then(() => console.log("MongoDB connected"))
-.catch((err) => console.error("MongoDB connection error:", err));
+// Enhanced MongoDB connection with error handling
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URI);
+        console.log("MongoDB connected successfully");
+    } catch (err) {
+        console.error("MongoDB connection error:", err);
+        // Exit process with failure
+        process.exit(1);
+    }
+};
+
+// Security Middleware
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(helmet()); // Adds various HTTP headers for security
+app.use(compression()); // Compress response bodies
+app.use(limiter); // Apply rate limiting
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true
+}));
+app.use(express.json({ limit: '10kb' })); // Limit payload size
+app.use(express.urlencoded({ extended: true }));
 
 // API routes
 app.use('/api/users', userRoutes);
 app.use('/api/games', gameRoutes);
+app.use('/api/memes', memeRoutes);
+app.use('/api/auth', authRoutes);
 
 // Serve static files from React frontend
-const reactPath = process.env.APPLICATION_STATE === 'production' ? '../frontend/build' : '../frontend/public';
-app.use(express.static(path.join(__dirname, reactPath)));
+const reactPath = process.env.NODE_ENV === 'production' ? path.join(__dirname, '../frontend/build') : path.join(__dirname, '../frontend/public');
+app.use(express.static(reactPath));
+
+// Catch-all route for SPA
+app.get('*', (req, res) => {
+    res.sendFile(path.join(reactPath, 'index.html'));
+});
 
 // Socket.IO setup
 io.on('connection', (socket) => {
     console.log(`New client connected: ${socket.id}`);
-    
-    // Example event listener for meme game actions
+
+    // Meme game socket events
     socket.on('memeAction', (data) => {
-        console.log(`Received meme action: ${data}`);
-        // Broadcast to all clients (or modify as needed)
-        io.emit('memeAction', data);
+        console.log(`Received meme action: ${JSON.stringify(data)}`);
+        // Broadcast to all clients with potential game logic
+        io.emit('memeActionResponse', { 
+        socketId: socket.id, 
+        action: data 
+        });
     });
-    
+
     socket.on('disconnect', () => {
         console.log(`Client disconnected: ${socket.id}`);
     });
 });
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({
+        message: 'Something went wrong!',
+        error: process.env.NODE_ENV === 'production' ? {} : err.message
+    });
+});
+
 // Start server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+
+// Connect to DB and start server
+const startServer = async () => {
+    await connectDB();
+    server.listen(PORT, () => {
+        console.log(`Server is running on http://localhost:${PORT}`);
+        console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+};
+
+startServer();
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received. Shutting down gracefully');
+    server.close(() => {
+        console.log('Process terminated');
+        process.exit(0);
+    });
 });
+
+module.exports = { app, server, io };

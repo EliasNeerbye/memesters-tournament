@@ -1,4 +1,4 @@
-// Import required packages
+
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
@@ -6,6 +6,12 @@ require('dotenv').config(); // Load environment variables from .env file
 
 // Create an instance of Express
 const app = express();
+let reactWhere;
+if (process.env.APPLIACTION_STATE == "production") {
+    reactWhere = "../frontend/build"
+} else {
+    reactWhere = "../frontend/public"
+}
 
 // Middleware
 app.use(cors()); // Enable CORS for all routes
@@ -18,7 +24,7 @@ app.get('/api/users', (req, res) => {
 });
 
 // Serve static files from the React app
-app.use(express.static(path.join(__dirname, '../frontend/build')));
+app.use(express.static(path.join(__dirname, )));
 
 // Catch-all handler to serve the React app for any other route
 app.get('*', (req, res) => {

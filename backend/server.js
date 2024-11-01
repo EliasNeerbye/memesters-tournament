@@ -7,7 +7,7 @@ require('dotenv').config(); // Load environment variables from .env file
 // Create an instance of Express
 const app = express();
 let reactWhere;
-if (process.env.APPLIACTION_STATE == "production") {
+if (process.env.APPLICATION_STATE == "production") {
     reactWhere = "../frontend/build"
 } else {
     reactWhere = "../frontend/public"
@@ -24,11 +24,11 @@ app.get('/api/users', (req, res) => {
 });
 
 // Serve static files from the React app
-app.use(express.static(path.join(__dirname, )));
+app.use(express.static(path.join(__dirname, reactWhere)));
 
 // Catch-all handler to serve the React app for any other route
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+    res.sendFile(path.join(__dirname, reactWhere, 'index.html'));
 });
 
 // Start the server

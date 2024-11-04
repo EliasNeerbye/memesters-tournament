@@ -43,7 +43,7 @@ const limiter = rateLimit({
 });
 
 // Middleware
-app.use(helmet()); // Adds various HTTP headers for security
+// app.use(helmet()); // Adds various HTTP headers for security
 app.use(compression()); // Compress response bodies
 app.use(limiter); // Apply rate limiting
 app.use(cors({

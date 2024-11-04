@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 import isEmail from 'validator/lib/isEmail';
 const User = require('../../models/User');
-const AuthService = require('../../services/AuthService');
+const AuthService = require('../../util/auth');
+require('dotenv').config();
 
 router.post('/register', async (req, res) => {
   const { email } = req.body;
@@ -95,24 +96,59 @@ router.post('/register/code', async (req, res) => {
 
 
 router.post('/login', async (req, res) => {
-  // TODO: Implement user login
-  // 1. Validate credentials
-  // 2. Compare hashed password
-  // 3. Generate JWT token
+  const {emailOrUsername} = req.body;
+
+  const isUser = await User.findOne({ $or: [{ email: emailOrUsername }, { username: emailOrUsername }] });
+  if (!isUser){
+    return res.status(400).json({message: "User does not exist!"})
+  }
+
+  try {
+    if (await AuthService.generateLoginCode(isUser.email)) {
+      return res.status(200).json({ message: "Code sent to email." });
+    }
+    return res.status(500).json({ message: "Code didn't get generated, or email didn't get sent." });
+  } catch (error) {
+    console.error('Code generation error:', error);
+    return res.status(500).json({ message: 'Failed to generate verification code, or email was not sent' });
+  }
 });
 
-// @route   GET /api/users/profile
-// @desc    Get current user's profile
-// @access  Private
+router.post('/login/code', async (req, res) => {
+  const {emailOrUsername, code} = req.body;
+
+  if (typeof code !== "string" || !/^\d{6}$/.test(code)) {
+    return res.status(400).json({ message: "Code needs to be a 6-digit number!" });
+  }
+
+  const isUser = await User.findOne({ $or: [{ email: emailOrUsername }, { username: emailOrUsername }] });
+  if (!isUser){
+    return res.status(400).json({message: "User does not exist!"})
+  }
+
+  try {
+    const result = await AuthService.verifyLoginCode(isUser.email, code);
+    if (result) {
+      const token = isUser.generateAuthToken();
+      return res.status(200).json({
+        message: "User logged in!",
+        token: token,
+      });
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(400).json({ message: error.message });
+  }
+});
+
+
 router.get('/profile', async (req, res) => {
   // TODO: Implement profile retrieval
   // 1. Verify JWT token
   // 2. Fetch user profile data
 });
 
-// @route   PUT /api/users/profile
-// @desc    Update user profile
-// @access  Private
+
 router.put('/profile', async (req, res) => {
   // TODO: Implement profile update
   // 1. Verify JWT token
@@ -120,8 +156,70 @@ router.put('/profile', async (req, res) => {
   // 3. Update user profile
 });
 
-router.delete('/profile', async (req, res) => {
-  //TODO: Implement profile delete
+router.delete('/delete-user', async (req, res) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const secret = process.env.JWT_SECRET;
+  const result = await AuthService.jwtValidation(token, secret);
+
+  if (result.error) {
+      return res.status(401).json({ message: 'Authentication failed', error: result.error });
+  }
+
+  const user = result;
+
+  const isUser = await User.findOne({email: user.email});
+  if(!isUser){
+    res.status(400).json({message:'User does not exist!'})
+  }
+
+  try {
+    if (await AuthService.generateLoginCode(email)) {
+      return res.status(200).json({ message: "Code sent to email." });
+    }
+    return res.status(500).json({ message: "Code didn't get generated, or email didn't get sent." });
+  } catch (error) {
+    console.error('Code generation error:', error);
+    return res.status(500).json({ message: 'Failed to generate verification code, or email was not sent' });
+  }
 });
+
+router.delete('/delete-user/code', async (req, res) => {
+  const {code} = req.body;
+  if(typeof code !== "number"){
+    return res.status(400).json({message: "Code should be a number!"})
+  }
+
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const secret = process.env.JWT_SECRET;
+  const result = await AuthService.jwtValidation(token, secret);
+
+  if (result.error) {
+      return res.status(401).json({ message: 'Authentication failed', error: result.error });
+  }
+
+  const user = result;
+
+  const isUser = await User.findOne({email: user.email});
+  if(!isUser){
+    res.status(400).json({message:'User does not exist!'})
+  }
+
+  try {
+    const result = await AuthService.verifyLoginCode(user.email, code);
+    if (result) {
+      try {
+        await User.deleteOne({email:user.email});
+        return res.status(200).json({message:"User has been deleted!"})
+      } catch (error) {
+        console.error('Deletion error:', error);
+        return res.status(400).json({ message: error.message });
+      }
+    }
+  } catch (error) {
+    console.error('Deletion error:', error);
+    return res.status(400).json({ message: error.message });
+  }
+
+})
 
 module.exports = router;

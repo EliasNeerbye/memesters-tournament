@@ -28,6 +28,18 @@ const userSchema = new mongoose.Schema({
         message: 'Invalid email address'
         }
     },
+    tempEmail: {
+        type: String,
+        required: false,
+        unique: true,
+        lowercase: true,
+        trim: true,
+        validate: {
+        validator: validator.isEmail,
+        message: 'Invalid email address'
+        },
+        default: null
+    },
     pfp: {
         type: String,
         default: null
@@ -44,6 +56,14 @@ const userSchema = new mongoose.Schema({
     lastLogin: {
         type: Date,
         default: null
+    },
+    allLogins: {
+        type: [
+            {
+                ip: { type: "string" },
+                date: { type: Date }
+            }
+        ]
     }
     }, { 
     timestamps: true
@@ -51,6 +71,7 @@ const userSchema = new mongoose.Schema({
 
 // Method to generate authentication token
 userSchema.methods.generateAuthToken = function() {
+    this.lastLogin = Date.now();
     return jwt.sign(
         { 
             _id: this._id, 

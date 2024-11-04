@@ -13,7 +13,6 @@ require('dotenv').config();
 const userRoutes = require('./routes/api/userRoutes');
 const gameRoutes = require('./routes/api/gameRoutes');
 const memeRoutes = require('./routes/api/memeRoutes');
-const authRoutes = require('./routes/api/authRoutes');
 
 // Initialize Express app
 const app = express();

@@ -4,12 +4,11 @@ const validator = require('validator');
 const User = require('../../models/User');
 const AuthService = require('../../util/auth');
 require('dotenv').config();
-const isEmail = validator.isEmail()
 
 router.post('/register', async (req, res) => {
   const { email } = req.body;
 
-  if (!isEmail(email)) {
+  if (!validator.isEmail(email)) {
     return res.status(400).json({ message: "Email is not valid." });
   }
 
@@ -32,7 +31,7 @@ router.post('/register', async (req, res) => {
 router.post('/register/code', async (req, res) => {
   const { email, username, code } = req.body;
 
-  if (!isEmail(email)) {
+  if (!validator.isEmail(email)) {
     return res.status(400).json({ message: "Email is not valid." });
   }
 

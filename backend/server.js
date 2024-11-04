@@ -58,7 +58,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/users', userRoutes);
 app.use('/api/games', gameRoutes);
 app.use('/api/memes', memeRoutes);
-app.use('/api/auth', authRoutes);
 
 // Serve static files from React frontend
 const reactPath = process.env.NODE_ENV === 'production' ? path.join(__dirname, '../frontend/build') : path.join(__dirname, '../frontend/public');

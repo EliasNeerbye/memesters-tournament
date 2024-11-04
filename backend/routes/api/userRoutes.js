@@ -149,8 +149,22 @@ router.get('/profile', async (req, res) => {
 });
 
 
-router.put('/profile', async (req, res) => {
-  // TODO: Implement profile update
+router.put('/profile/username', async (req, res) => {
+  // TODO: Profile username update
+  // 1. Verify JWT token
+  // 2. Validate input
+  // 3. Update user profile
+});
+
+router.put('/profile/email', async (req, res) => {
+  // TODO: Profile username update
+  // 1. Verify JWT token
+  // 2. Validate input
+  // 3. Update user profile
+});
+
+router.put('/profile/pfp', async (req, res) => {
+  // TODO: Profile username update
   // 1. Verify JWT token
   // 2. Validate input
   // 3. Update user profile

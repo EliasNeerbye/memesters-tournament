@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-import isEmail from 'validator/lib/isEmail';
+const validator = require('validator');
 const User = require('../../models/User');
 const AuthService = require('../../util/auth');
 require('dotenv').config();
+const isEmail = validator.isEmail()
 
 router.post('/register', async (req, res) => {
   const { email } = req.body;

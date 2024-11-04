@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Tests | Meemesters API</title>
+    </head>
+    <body>
+        <label for="email">Email: <input type="email" name="email" id="registerEmail"></label><br>
+        <label for="username">Username: <input type="text" name="username" id="registerUsername"></label><br>
+        <label for="code">Code: <input type="number" name="code" id="registerCode"></label><br>
+        <button onclick="testRegister()">Get Register Code</button><hr><button onclick="testRegister(code)">Register User</button>
+        <br><br><br>
+        <label for="emailOrUsername">Email: <input type="emailOrUsername" name="emailOrUsername" id="registerEmailOrUsername"></label><br>
+        <label for="code">Code: <input type="number" name="code" id="loginCode"></label><br>
+        <button onclick="testLogin()">Get Login Code</button><hr><button onclick="testLogin(code)">Login</button>
+        <br><br><br>
+        <label for="code">Code: <input type="number" name="code" id="deleteCode"></label><br>
+        <button onclick="testDelete()">Get Deletion Code</button><hr><button onclick="testDelete(code)">Delete user</button>
+    </body>
+</html>

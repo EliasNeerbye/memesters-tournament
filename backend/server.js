@@ -53,6 +53,10 @@ app.use(cors({
 app.use(express.json({ limit: '10kb' })); // Limit payload size
 app.use(express.urlencoded({ extended: true }));
 
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'tests.html'));
+})
+
 // API routes
 app.use('/api/users', userRoutes);
 app.use('/api/games', gameRoutes);

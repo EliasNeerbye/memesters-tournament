@@ -31,6 +31,10 @@ router.post('/register', async (req, res) => {
 router.post('/register/code', async (req, res) => {
   const { email, username, code } = req.body;
 
+  if (!email || !username || !code){
+    return res.status(400).json({message: "Something is missing"});
+  }
+
   if (!validator.isEmail(email)) {
     return res.status(400).json({ message: "Email is not valid." });
   }
@@ -187,7 +191,7 @@ router.delete('/delete-user', async (req, res) => {
   }
 
   try {
-    if (await AuthService.generateLoginCode(email)) {
+    if (await AuthService.generateLoginCode(user.email)) {
       return res.status(200).json({ message: "Code sent to email." });
     }
     return res.status(500).json({ message: "Code didn't get generated, or email didn't get sent." });
@@ -199,8 +203,8 @@ router.delete('/delete-user', async (req, res) => {
 
 router.delete('/delete-user/code', async (req, res) => {
   const {code} = req.body;
-  if(typeof code !== "number"){
-    return res.status(400).json({message: "Code should be a number!"})
+  if (typeof code !== "string" || !/^\d{6}$/.test(code)) {
+    return res.status(400).json({ message: "Code needs to be a 6-digit number!" });
   }
 
   const token = req.header('Authorization')?.replace('Bearer ', '');

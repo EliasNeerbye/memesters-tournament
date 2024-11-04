@@ -82,26 +82,13 @@ class AuthService {
                 throw new Error('Invalid or expired code');
             }
 
-            // Find or create user if not exists
-            let user = await User.findOne({ email: contact });
-            if (!user) {
-                user = new User({ 
-                    email: contact,
-                    isVerified: true 
-                });
-                await user.save();
-            }
-
             // Mark code as used
             await verificationCode.markAsUsed();
 
-            // Generate authentication token
-            const token = user.generateAuthToken();
-
-            return { user, token };
+            return true;
         } catch (error) {
             console.error('Code verification error:', error);
-            throw error;
+            return false;
         }
     }
 

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 
 const CodeSchema = new mongoose.Schema({
     // Unique verification code
@@ -52,7 +53,7 @@ const CodeSchema = new mongoose.Schema({
     },
     
     // Automatically expires after 5 minutes
-    createdAt: {
+    dateAndExpiry: {
         type: Date,
         default: Date.now,
         expires: 300 // 5 minutes in seconds
@@ -61,20 +62,27 @@ const CodeSchema = new mongoose.Schema({
     timestamps: true // Adds createdAt and updatedAt fields
 });
 
-// Pre-save hook to generate a secure random code
-CodeSchema.pre('save', function(next) {
+CodeSchema.pre('save', async function(next) {
     // If code is not already set, generate a new one
     if (!this.code) {
         // Generate a 6-digit numeric code
         this.code = crypto.randomInt(100000, 999999).toString();
     }
-    next();
+
+    // Hash the code
+    try {
+        const salt = await bcrypt.genSalt(10);
+        this.code = await bcrypt.hash(this.code, salt);
+        next();
+    } catch (error) {
+        next(error);
+    }
 });
 
-// Method to check if code is valid and not expired
+
 CodeSchema.methods.isValid = function() {
     const now = new Date();
-    const codeCreatedAt = this.createdAt;
+    const codeCreatedAt = this.dateAndExpiry;
     const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
     
     return (
@@ -85,15 +93,23 @@ CodeSchema.methods.isValid = function() {
 };
 
 // Static method to find and validate a code
-CodeSchema.statics.findValidCode = async function(contact, code, purpose = 'login') {
-    const verificationCode = await this.findOne({ 
+CodeSchema.statics.findValidCode = async function(contact, inputCode, purpose = 'login') {
+    const verificationCodes = await this.find({ 
         contact, 
-        code, 
         purpose,
         isUsed: false
     });
     
-    return verificationCode && verificationCode.isValid() ? verificationCode : null;
+    for (let verificationCode of verificationCodes) {
+        if (verificationCode.isValid()) {
+            const isMatch = await bcrypt.compare(inputCode, verificationCode.code);
+            if (isMatch) {
+                return verificationCode;
+            }
+        }
+    }
+    
+    return null;
 };
 
 // Method to increment verification attempts

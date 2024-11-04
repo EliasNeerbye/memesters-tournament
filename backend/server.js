@@ -39,7 +39,7 @@ const connectDB = async () => {
 
 // Security Middleware
 const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 15 minutes
+  windowMs: 5 * 60 * 1000,
   max: 100 // limit each IP to 100 requests per windowMs
 });
 
@@ -73,15 +73,7 @@ app.get('*', (req, res) => {
 io.on('connection', (socket) => {
     console.log(`New client connected: ${socket.id}`);
 
-    // Meme game socket events
-    socket.on('memeAction', (data) => {
-        console.log(`Received meme action: ${JSON.stringify(data)}`);
-        // Broadcast to all clients with potential game logic
-        io.emit('memeActionResponse', { 
-        socketId: socket.id, 
-        action: data 
-        });
-    });
+    
 
     socket.on('disconnect', () => {
         console.log(`Client disconnected: ${socket.id}`);

@@ -81,4 +81,8 @@ All endpoints are prefixed with `/api/user/`.
 
 ### Important Notes:
 1. All endpoints except registration and login require a valid JWT token in the Authorization header.
-2. The token should be included as follows:
+2. The token should be included as follows: "Authorization: Bearer <token>"
+3. Many endpoints use a two-step verification process (send code, then verify code).
+4. Error responses will include a `message` field explaining the error.
+5. Successful responses typically include a `message` field and sometimes additional data (e.g., `token`, `pfpUrl`).
+-----------------------------------

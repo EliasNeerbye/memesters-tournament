@@ -8,6 +8,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+const fileUpload = require('express-fileupload');
 
 // Import routes
 const userRoutes = require('./routes/api/userRoutes');
@@ -43,7 +44,22 @@ const limiter = rateLimit({
 });
 
 // Middleware
-app.use(helmet()); // Adds various HTTP headers for security
+app.use(
+    helmet({
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", "'unsafe-inline'"],
+                scriptSrcAttr: ["'unsafe-inline'"],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+                imgSrc: ["'self'", "data:"],
+                connectSrc: ["'self'"],
+                upgradeInsecureRequests: null
+            },
+        },
+    })
+);
+
 app.use(compression()); // Compress response bodies
 app.use(limiter); // Apply rate limiting
 app.use(cors({
@@ -52,6 +68,16 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10kb' })); // Limit payload size
 app.use(express.urlencoded({ extended: true }));
+app.use(fileUpload({
+    limits: { fileSize: 4 * 1024 * 1024 }, // 1 MB
+    useTempFiles: true,
+    tempFileDir: '/tmp/',
+    createParentPath: true,
+    abortOnLimit: true,
+    safeFileNames: true,
+    preserveExtension: true,
+    debug: false
+}));  
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'tests.html'));

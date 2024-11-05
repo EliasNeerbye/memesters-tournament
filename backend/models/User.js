@@ -31,14 +31,24 @@ const userSchema = new mongoose.Schema({
     tempEmail: {
         type: String,
         required: false,
-        unique: true,
         lowercase: true,
         trim: true,
-        validate: {
-        validator: validator.isEmail,
-        message: 'Invalid email address'
-        },
-        default: null
+        validate: [
+            {
+                validator: function(v) {
+                    return v === null || validator.isEmail(v);
+                },
+                message: 'Invalid email address'
+            },
+            {
+                validator: async function(v) {
+                if (v === null) return true;
+                    const count = await this.constructor.countDocuments({ tempEmail: v });
+                    return count === 0;
+                },
+                message: 'Temporary email must be unique'
+            }
+        ]
     },
     pfp: {
         type: String,
@@ -70,21 +80,37 @@ const userSchema = new mongoose.Schema({
 });
 
 // Method to generate authentication token
-userSchema.methods.generateAuthToken = function() {
+userSchema.methods.generateAuthToken = async function(ip) {
     this.lastLogin = Date.now();
-    return jwt.sign(
+    
+    // Add the current login to allLogins
+    this.allLogins.push({
+        ip: ip,
+        date: new Date()
+    });
+
+    // Limit the array to the last 10 logins (optional)
+    if (this.allLogins.length > 20) {
+        this.allLogins = this.allLogins.slice(-10);
+    }
+
+    // Save the updated user document
+    await this.save();
+
+    const token = await jwt.sign(
         { 
-            _id: this._id, 
-            username: this.username,
-            email: this.email,
-            roles: this.roles
+            _id: this._id,
+            email: this.email
         }, 
-            process.env.JWT_SECRET, 
+        process.env.JWT_SECRET, 
         { 
             expiresIn: '7d' 
         }
     );
-};
+
+    return token;
+}
+
 
 // Pre-save hook for additional processing
 userSchema.pre('save', function(next) {

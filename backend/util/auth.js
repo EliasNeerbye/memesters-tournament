@@ -1,5 +1,6 @@
 const Code = require('../models/Code');
 const User = require('../models/User');
+const TokenBlacklist = require('../models/TokenBlacklist');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
@@ -79,7 +80,7 @@ class AuthService {
             const verificationCode = await Code.findValidCode(contact, code);
 
             if (!verificationCode) {
-                throw new Error('Invalid or expired code');
+                return false;
             }
 
             // Mark code as used
@@ -102,6 +103,16 @@ class AuthService {
             return decoded;
         } catch (error) {
             return {error};
+        }
+    }
+
+    async isTokenBlacklisted(token) {
+        try {
+            const blacklistedToken = await TokenBlacklist.findOne({ token });
+            return !!blacklistedToken; // Returns true if token is found in blacklist, false otherwise
+        } catch (error) {
+            console.error('Token blacklist check error:', error);
+            throw new Error('Failed to check token blacklist');
         }
     }
 }

@@ -10,12 +10,26 @@
 
 
 
-@layer components{
-  body{
+@layer components {
+  body {
     @apply
     font-playpen 
     bg-primaryColor
     text-white
+    transition-all ease-in-out duration-300;
+  }
+  
+  input, button {
+    @apply
+    bg-secondaryColor
+    text-white
+    rounded-lg
+    p-4
+    pl-6
+    pr-6
+    mt-5
+    placeholder-white
+    transition-all ease-in-out duration-300
+    hover:scale-110;
   }
 }
-

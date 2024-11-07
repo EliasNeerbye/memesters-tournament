@@ -30,14 +30,16 @@ export default function LandingPage() {
           </p>
         </div>
         <div class="flex flex-col justify-center items-center text-center mt-20">
-          <form action="">
+          <form class="flex flex-col justify-center w-1/2" action="">
             <input
               class="text-center rounded-lg bg-secondaryColor p-4 pl-6 pr-6 mt-5 text-white placeholder-white"
               type="text"
               placeholder="party code..."
             />
-            <button class=""></button>
-            <button class=""></button>
+            <div class="flex flex-col justify-center items-center w-full mt-5">
+            <button class="flex justify-center w-1/3">Join</button>
+            <button class="flex justify-center w-1/3">Make lobby</button>
+            </div>
           </form>
         </div>
       </main>

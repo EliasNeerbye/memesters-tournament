@@ -101,7 +101,7 @@ userSchema.methods.generateAuthToken = async function(ip) {
     // Save the updated user document
     await this.save();
 
-    const token = await jwt.sign(
+    const token = jwt.sign(
         { 
             _id: this._id,
             email: this.email

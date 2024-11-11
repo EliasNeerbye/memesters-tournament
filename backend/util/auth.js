@@ -27,12 +27,11 @@ class AuthService {
 
     getCookieConfig() {
         return {
-            httpOnly: true,
+            httpOnly: false,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            path: '/',
-            domain: process.env.COOKIE_DOMAIN || undefined
+            maxAge: 14 * 24 * 60 * 60 * 1000,
+            path: '/'
         };
     }
 

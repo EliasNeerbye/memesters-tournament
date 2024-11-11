@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const gameSchema = new mongoose.Schema({
     hostUserId: {
@@ -39,8 +40,18 @@ const gameSchema = new mongoose.Schema({
             type: Number,
             default: 0
         }
-    }]
+    }],
+    code: {
+        type: Number
+    }
 }, { timestamps: true });
+
+gameSchema.pre('save', async function(next) {
+    // If code is not already set, generate a new one
+    if (!this.code) {
+        this.code = crypto.randomInt(10000000, 99999999).toString();
+    }
+});
 
 // Add method to check if game is full
 gameSchema.methods.isFull = function() {

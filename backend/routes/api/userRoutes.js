@@ -33,6 +33,37 @@ router.post('/register', async (req, res) => {
   }
 });
 
+router.post('/register/code', async (req, res) => {
+  const { email, username, code } = req.body;
+
+  if (!email || !username || !code){
+      return res.status(400).json({message: "Something is missing"});
+  }
+
+  try {
+      const result = await AuthService.verifyLoginCode(email, code);
+      if (result) {
+          const isVerified = true;
+          const lastLogin = Date.now();
+          const user = new User({
+              username: username.trim(),
+              email,
+              isVerified,
+              lastLogin,
+          });
+  
+          const token = await user.generateAuthToken(req.ip);
+          await user.save();
+          
+          res.cookie('auth_token', token, AuthService.getCookieConfig());
+          return res.status(200).json({ message: "User registered!" });
+      }
+  } catch (error) {
+      console.error('Registration error:', error);
+      return res.status(400).json({ message: error.message });
+  }
+});
+
 router.post('/login', async (req, res) => {
   const {emailOrUsername} = req.body;
 
@@ -49,6 +80,27 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Code generation error:', error);
     return res.status(500).json({ message: 'Failed to generate verification code, or email was not sent' });
+  }
+});
+
+router.post('/login/code', async (req, res) => {
+  const {emailOrUsername, code} = req.body;
+
+  const isUser = await User.findOne({ $or: [{ email: emailOrUsername }, { username: emailOrUsername }] });
+  if (!isUser){
+      return res.status(400).json({message: "User does not exist!"})
+  }
+
+  try {
+      const result = await AuthService.verifyLoginCode(isUser.email, code);
+      if (result) {
+          const token = await isUser.generateAuthToken(req.ip);
+          res.cookie('auth_token', token, AuthService.getCookieConfig());
+          return res.status(200).json({ message: "User logged in!" });
+      }
+  } catch (error) {
+      console.error('Login error:', error);
+      return res.status(400).json({ message: error.message });
   }
 });
 
@@ -366,58 +418,6 @@ router.put('/profile/pfp', async (req, res) => {
   } catch (error) {
     console.error('Error updating profile picture:', error);
     res.status(500).json({ message: 'Error updating profile picture', error: error.message });
-  }
-});
-
-router.post('/register/code', async (req, res) => {
-  const { email, username, code } = req.body;
-
-  if (!email || !username || !code){
-      return res.status(400).json({message: "Something is missing"});
-  }
-
-  try {
-      const result = await AuthService.verifyLoginCode(email, code);
-      if (result) {
-          const isVerified = true;
-          const lastLogin = Date.now();
-          const user = new User({
-              username: username.trim(),
-              email,
-              isVerified,
-              lastLogin,
-          });
-  
-          const token = await user.generateAuthToken(req.ip);
-          await user.save();
-          
-          res.cookie('auth_token', token, AuthService.getCookieConfig());
-          return res.status(200).json({ message: "User registered!" });
-      }
-  } catch (error) {
-      console.error('Registration error:', error);
-      return res.status(400).json({ message: error.message });
-  }
-});
-
-router.post('/login/code', async (req, res) => {
-  const {emailOrUsername, code} = req.body;
-
-  const isUser = await User.findOne({ $or: [{ email: emailOrUsername }, { username: emailOrUsername }] });
-  if (!isUser){
-      return res.status(400).json({message: "User does not exist!"})
-  }
-
-  try {
-      const result = await AuthService.verifyLoginCode(isUser.email, code);
-      if (result) {
-          const token = await isUser.generateAuthToken(req.ip);
-          res.cookie('auth_token', token, AuthService.getCookieConfig());
-          return res.status(200).json({ message: "User logged in!" });
-      }
-  } catch (error) {
-      console.error('Login error:', error);
-      return res.status(400).json({ message: error.message });
   }
 });
 

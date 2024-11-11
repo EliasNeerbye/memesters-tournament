@@ -4,8 +4,154 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tests | Meemesters API</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 <body>
-    <h1>Hello world</h1>
+    <h1>Meemesters API Test</h1>
+    
+    <div>
+        <h2>Login</h2>
+        <input type="text" id="emailOrUsername" placeholder="Email or Username">
+        <button onclick="requestLoginCode()">Request Login Code</button>
+        <br><br>
+        <input type="text" id="loginCode" placeholder="Enter Login Code">
+        <button onclick="verifyLoginCode()">Verify Code</button>
+    </div>
+
+    <div>
+        <h2>Socket Connection</h2>
+        <button onclick="connectSocket()" id="connectSocketBtn" disabled>Connect Socket</button>
+    </div>
+
+    <div>
+        <h2>Game Actions</h2>
+        <button onclick="createGame()" disabled id="createGameBtn">Create New Game</button>
+        <input type="text" id="gameCodeInput" placeholder="Enter game code">
+        <button onclick="joinGame()" disabled id="joinGameBtn">Join Game</button>
+    </div>
+
+    <div>
+        <h2>Events Log</h2>
+        <pre id="eventLog"></pre>
+    </div>
+
+    <script>
+        console.log("All cookies:", document.cookie);
+
+        function parseAllCookies() {
+            return document.cookie.split(';').reduce((cookies, cookie) => {
+                const [name, value] = cookie.trim().split('=');
+                cookies[name] = decodeURIComponent(value);
+                return cookies;
+            }, {});
+        }
+
+        const allCookies = parseAllCookies();
+        console.log("Parsed cookies:", allCookies);
+
+        let authToken = allCookies['auth_token'] || null;
+        console.log("Auth token:", authToken);
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        async function requestLoginCode() {
+            const emailOrUsername = document.getElementById('emailOrUsername').value;
+            try {
+                const response = await fetch('/api/users/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ emailOrUsername }),
+                });
+                const data = await response.json();
+                log(data.message);
+            } catch (error) {
+                log('Error requesting login code: ' + error.message);
+            }
+        }
+
+        async function verifyLoginCode() {
+            const emailOrUsername = document.getElementById('emailOrUsername').value;
+            const code = document.getElementById('loginCode').value;
+            try {
+                const response = await fetch('/api/users/login/code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ emailOrUsername, code }),
+                });
+                const data = await response.json();
+                log(data.message);
+                if (response.ok) {
+                    authToken = getCookie('auth_token');
+                    console.log('Auth Token:', authToken); // For debugging
+                    document.getElementById('connectSocketBtn').disabled = false;
+                }
+            } catch (error) {
+                log('Error verifying login code: ' + error.message);
+            }
+        }
+
+        function connectSocket() {
+
+
+            console.log('Attempting to connect with token:', authToken); // For debugging
+            socket = io('http://localhost:5000/', {
+                auth: {
+                    token: authToken
+                }
+            });
+
+            socket.on('connect', () => {
+                log('Connected to server');
+                document.getElementById('createGameBtn').disabled = false;
+                document.getElementById('joinGameBtn').disabled = false;
+            });
+
+            socket.on('connect_error', (error) => {
+                log('Connection error: ' + error.message);
+            });
+
+            socket.on('error', (data) => {
+                log('Error: ' + data.message);
+            });
+
+            socket.on('gameCreated', (data) => {
+                log('Game created: ' + JSON.stringify(data));
+            });
+
+            socket.on('gameJoined', (data) => {
+                log('Game joined: ' + JSON.stringify(data));
+            });
+
+            socket.on('newPlayerJoined', (data) => {
+                log('New player joined: ' + JSON.stringify(data));
+            });
+
+            socket.on('playerLeft', (data) => {
+                log('Player left: ' + JSON.stringify(data));
+            });
+        }
+
+        function createGame() {
+            socket.emit('newGame');
+        }
+
+        function joinGame() {
+            const code = document.getElementById('gameCodeInput').value;
+            socket.emit('joinGame', code);
+        }
+
+        function log(message) {
+            const logElement = document.getElementById('eventLog');
+            logElement.textContent += message + '\n';
+        }
+    </script>
 </body>
 </html>

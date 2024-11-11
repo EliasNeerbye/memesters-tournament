@@ -25,6 +25,17 @@ class AuthService {
         }
     }
 
+    getCookieConfig() {
+        return {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: '/',
+            domain: process.env.COOKIE_DOMAIN || undefined
+        };
+    }
+
     async generateLoginCode(contact, user = null) {
         try {
             // Generate a 6-digit numeric code

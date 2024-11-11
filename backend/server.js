@@ -9,6 +9,8 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const fileUpload = require('express-fileupload');
+const GameSocket = require('./sockets/gameSocket');
+const cookieParser = require('cookie-parser');
 
 // Import routes
 const userRoutes = require('./routes/api/userRoutes');
@@ -20,10 +22,11 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-        methods: ['GET', 'POST', 'PUT', 'DELETE']
+        origin: process.env.FRONTEND_URL || 'http://localhost:3000'
     }
 });
+
+GameSocket(io);
 
 // Enhanced MongoDB connection with error handling
 const connectDB = async () => {
@@ -39,33 +42,47 @@ const connectDB = async () => {
 
 // Security Middleware
 const limiter = rateLimit({
-  windowMs: 5 * 60 * 1000,
+  windowMs: 2 * 60 * 1000,
   max: 100 // limit each IP to 100 requests per windowMs
 });
 
-// Middleware
-app.use(
-    helmet({
-        contentSecurityPolicy: {
-            directives: {
-                defaultSrc: ["'self'"],
-                scriptSrc: ["'self'", "'unsafe-inline'"],
-                scriptSrcAttr: ["'unsafe-inline'"],
-                styleSrc: ["'self'", "'unsafe-inline'"],
-                imgSrc: ["'self'", "data:"],
-                connectSrc: ["'self'"],
-                upgradeInsecureRequests: null
-            },
-        },
-    })
-);
 
-app.use(compression()); // Compress response bodies
-app.use(limiter); // Apply rate limiting
+app.use(cookieParser());
+
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrcAttr: ["'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:"],
+            connectSrc: ["'self'"],
+            upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
+        },
+    },
+}));
+
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Set-Cookie']
 }));
+
+const extractToken = (req, res, next) => {
+    const token = req.cookies.auth_token;
+    if (token) {
+        req.headers.authorization = `Bearer ${token}`;
+    }
+    next();
+};
+
+app.use(extractToken);
+
+app.use(compression()); // Compress response bodies
+// app.use(limiter); // Apply rate limiting
 app.use(express.json({ limit: '10kb' })); // Limit payload size
 app.use(express.urlencoded({ extended: true }));
 app.use(fileUpload({
@@ -95,17 +112,6 @@ app.use(express.static(reactPath));
 // Catch-all route for SPA
 app.get('*', (req, res) => {
     res.sendFile(path.join(reactPath, 'index.html'));
-});
-
-// Socket.IO setup
-io.on('connection', (socket) => {
-    console.log(`New client connected: ${socket.id}`);
-
-    
-
-    socket.on('disconnect', () => {
-        console.log(`Client disconnected: ${socket.id}`);
-    });
 });
 
 // Error handling middleware

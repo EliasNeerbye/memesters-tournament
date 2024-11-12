@@ -43,7 +43,7 @@ export default function LoginUser() {
     event.preventDefault();
     setLoading(true);
     setErrorMessage('');
-
+  
     try {
       const response = await fetch('/api/users/login/code', {
         method: 'POST',
@@ -52,11 +52,12 @@ export default function LoginUser() {
         },
         body: JSON.stringify({ emailOrUsername, code: verificationCode }),
       });
-
+  
       const data = await response.json();
-
+  
       if (response.ok) {
-        localStorage.setItem('jwtToken', data.token);
+        // Store token in a cookie
+        document.cookie = `jwtToken=${data.token}; path=/; max-age=604800; Secure; SameSite=Strict`;
         navigate('/profile'); // Redirect to profile page after successful login
       } else {
         setErrorMessage(data.message || 'Invalid verification code.');
@@ -68,6 +69,7 @@ export default function LoginUser() {
       setLoading(false);
     }
   };
+  
 
   return (
     <div className="flex flex-col justify-center items-center mt-40">

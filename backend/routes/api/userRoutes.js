@@ -332,9 +332,13 @@ router.post('/profile/email/code', async (req, res) => {
   try {
     const result = await AuthService.verifyLoginCode(newEmail, newCode);
     if (result) {
-      isUser.email = newEmail;
-      isUser.tempEmail = null;
-      isUser.isVerified = true;
+      User.updateOne(
+        { _id: isUser._id },
+        {
+          $set: { email: newEmail, isVerified: true },
+          $unset: { tempEmail: "" }
+        }
+      );      
       const newToken = await isUser.generateAuthToken(req.ip)
       await isUser.save();
       return res.status(201).json({message:"Email has been updated!", token:newToken});

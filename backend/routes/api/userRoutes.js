@@ -105,7 +105,7 @@ router.post('/login/code', async (req, res) => {
 });
 
 router.get('/profile', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -144,7 +144,7 @@ router.get('/profile', async (req, res) => {
 });
 
 router.put('/profile/username', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -201,7 +201,7 @@ router.put('/profile/username', async (req, res) => {
 });
 
 router.post('/profile/email', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -240,7 +240,7 @@ router.post('/profile/email', async (req, res) => {
 });
 
 router.put('/profile/email', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -270,6 +270,15 @@ router.put('/profile/email', async (req, res) => {
     return res.status(400).json({ message: "Code needs to be a 6-digit number!" });
   }
 
+  if (!newEmail){
+    return res.status(400).json({message:"You need to send a new email!"});
+  }
+
+  const alreadyExists = User.findOne({$or:[{email:newEmail},{tempEmail:newEmail}]});
+  if(alreadyExists.length > 0) {
+    return res.status(401).json({message: "Email is already in use!"})
+  }
+
   const isUser = await User.findOne({_id: user._id})
   if(!isUser){
     return res.status(400).json({message:"User does not exist!"});
@@ -294,7 +303,7 @@ router.put('/profile/email', async (req, res) => {
 });
 
 router.post('/profile/email/code', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -332,28 +341,35 @@ router.post('/profile/email/code', async (req, res) => {
   try {
     const result = await AuthService.verifyLoginCode(newEmail, newCode);
     if (result) {
-      User.updateOne(
-        { _id: isUser._id },
-        {
-          $set: { email: newEmail, isVerified: true },
-          $unset: { tempEmail: "" }
-        }
-      );      
-      const newToken = await isUser.generateAuthToken(req.ip)
+      const updateQuery = {
+        $set: { email: newEmail, isVerified: true },
+        $unset: { tempEmail: "" }
+      };
+      
+      const userBefore = await User.findById(isUser._id);
+      console.log('User before update:', userBefore);
+
+      await User.updateOne({ _id: isUser._id }, updateQuery);
+
+      const userAfter = await User.findById(isUser._id);
+      console.log('User after update:', userAfter);
+
+      
+      const newToken = await isUser.generateAuthToken(req.ip);
       await isUser.save();
-      return res.status(201).json({message:"Email has been updated!", token:newToken});
+      return res.status(201).json({message: "Email has been updated!", token: newToken});
     } else {
-      return res.status(400).json({message:"Code validation failed!"});
+      return res.status(400).json({message: "Code validation failed!"});
     }
   } catch (error) {
     console.error('Login error:', error);
     return res.status(400).json({ message: error.message });
-  }
+  }  
 
 })
 
 router.put('/profile/pfp', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -438,7 +454,7 @@ router.get('/logout', async (req, res) => {
       }
 
       await TokenBlacklist.create({ token });
-      res.clearCookie('auth_token', AuthService.getCookieConfig());
+      res.clearCookie('auth_token', AuthService.getCookieConfig(true));
       res.status(200).json({ message: 'Logged out successfully' });
   } catch (error) {
       console.error('Logout error:', error);
@@ -447,7 +463,7 @@ router.get('/logout', async (req, res) => {
 });
 
 router.delete('/delete-user', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -493,7 +509,7 @@ router.delete('/delete-user/code', async (req, res) => {
     return res.status(400).json({ message: "Code needs to be a 6-digit number!" });
   }
 
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -522,6 +538,7 @@ router.delete('/delete-user/code', async (req, res) => {
     if (result) {
       try {
         await User.findOneAndDelete({email:user.email});
+        res.clearCookie('auth_token', AuthService.getCookieConfig(true));
         return res.status(200).json({message:"User has been deleted!"})
       } catch (error) {
         console.error('Deletion error:', error);

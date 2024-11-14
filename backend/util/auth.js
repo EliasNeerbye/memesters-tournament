@@ -25,15 +25,20 @@ class AuthService {
         }
     }
 
-    getCookieConfig() {
-        return {
-            httpOnly: false,
+    getCookieConfig(forClearing = false) {
+        const config = {
+            httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
-            maxAge: 14 * 24 * 60 * 60 * 1000,
             path: '/'
         };
-    }
+    
+        if (!forClearing) {
+            config.maxAge = 14 * 24 * 60 * 60 * 1000;
+        }
+    
+        return config;
+    }    
 
     async generateLoginCode(contact, user = null) {
         try {

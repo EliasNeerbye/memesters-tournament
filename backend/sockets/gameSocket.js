@@ -3,17 +3,26 @@ const User = require('../models/User');
 const Round = require('../models/Round');
 const Game = require('../models/Game');
 
+// Helper function to parse cookies
+function getCookieValue(cookies, name) {
+    const match = cookies.match(new RegExp(`(^|;\\s*)${name}=([^;]*)`));
+    return match ? decodeURIComponent(match[2]) : null;
+}
+
 const GameSocket = (io) => {
     const activeGames = new Map();
 
     // Authentication middleware
     io.use(async (socket, next) => {
         try {
-            const token = socket.handshake.auth.token || socket.handshake.query.token;
+            // Look for the token in cookies if it's not in the handshake auth or query
+            const cookies = socket.handshake.headers.cookie || '';
+            const token = socket.handshake.auth.token || socket.handshake.query.token || getCookieValue(cookies, 'token');
             
             if (!token) {
                 return next(new Error('Authentication error: Token not provided'));
             }
+
             const isBlackList = await isTokenBlacklisted(token);
             if (isBlackList) {
                 return next(new Error('Authentication error: Token is outdated / invalid'));

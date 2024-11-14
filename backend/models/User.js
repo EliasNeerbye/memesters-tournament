@@ -20,7 +20,6 @@ const userSchema = new mongoose.Schema({
     email: {
         type: String,
         required: [true, 'Email is required'],
-        unique: true,
         lowercase: true,
         trim: true,
         validate: {
@@ -33,27 +32,6 @@ const userSchema = new mongoose.Schema({
         required: false,
         lowercase: true,
         trim: true,
-        validate: [
-            {
-                validator: function(v) {
-                    return v === null || v === undefined || validator.isEmail(v);
-                },
-                message: 'Invalid email address'
-            },
-            {
-                validator: async function(v) {
-                    if (v === null || v === undefined) return true;
-                    const count = await this.constructor.countDocuments({
-                        $or: [
-                            { email: v },
-                            { tempEmail: v }
-                        ]
-                    });
-                    return count === 0;
-                },
-                message: 'Email already in use'
-            }
-        ]
     },    
     pfp: {
         type: String,

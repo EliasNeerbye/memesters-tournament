@@ -4,11 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tests | Meemesters API</title>
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 <body>
     <h1>Meemesters API Test</h1>
     
+    <div>
+        <h2>Registration</h2>
+        <input type="email" id="registerEmail" placeholder="Email">
+        <button onclick="requestRegisterCode()">Request Register Code</button>
+        <br><br>
+        <input type="text" id="registerUsername" placeholder="Username">
+        <input type="text" id="registerCode" placeholder="Enter Register Code">
+        <button onclick="completeRegistration()">Complete Registration</button>
+    </div>
+
     <div>
         <h2>Login</h2>
         <input type="text" id="emailOrUsername" placeholder="Email or Username">
@@ -19,15 +28,36 @@
     </div>
 
     <div>
-        <h2>Socket Connection</h2>
-        <button onclick="connectSocket()" id="connectSocketBtn" disabled>Connect Socket</button>
+        <h2>User Profile</h2>
+        <button onclick="getProfile()">Get Profile</button>
+        <br><br>
+        <input type="text" id="newUsername" placeholder="New Username">
+        <button onclick="updateUsername()">Update Username</button>
+        <br><br>
+        <button onclick="initiateEmailChange()">Initiate Email Change</button>
+        <br><br>
+        <input type="text" id="emailChangeCode" placeholder="Email Change Code">
+        <input type="email" id="newEmail" placeholder="New Email">
+        <button onclick="updateEmail()">Update Email</button>
+        <br><br>
+        <input type="text" id="confirmNewEmailCode" placeholder="Confirm New Email Code">
+        <button onclick="confirmNewEmail()">Confirm New Email</button>
+        <br><br>
+        <input type="file" id="pfpFile" accept="image/*">
+        <button onclick="updateProfilePicture()">Update Profile Picture</button>
     </div>
 
     <div>
-        <h2>Game Actions</h2>
-        <button onclick="createGame()" disabled id="createGameBtn">Create New Game</button>
-        <input type="text" id="gameCodeInput" placeholder="Enter game code">
-        <button onclick="joinGame()" disabled id="joinGameBtn">Join Game</button>
+        <h2>Account Deletion</h2>
+        <button onclick="initiateAccountDeletion()">Initiate Account Deletion</button>
+        <br><br>
+        <input type="text" id="deleteAccountCode" placeholder="Delete Account Code">
+        <button onclick="confirmAccountDeletion()">Confirm Account Deletion</button>
+    </div>
+
+    <div>
+        <h2>Logout</h2>
+        <button onclick="logout()">Logout</button>
     </div>
 
     <div>
@@ -36,121 +66,99 @@
     </div>
 
     <script>
-        console.log("All cookies:", document.cookie);
-
-        function parseAllCookies() {
-            return document.cookie.split(';').reduce((cookies, cookie) => {
-                const [name, value] = cookie.trim().split('=');
-                cookies[name] = decodeURIComponent(value);
-                return cookies;
-            }, {});
+        function log(message) {
+            const logElement = document.getElementById('eventLog');
+            logElement.textContent += message + '\n';
         }
 
-        const allCookies = parseAllCookies();
-        console.log("Parsed cookies:", allCookies);
+        async function makeRequest(url, method, body = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include', // This ensures cookies are sent with the request
+            };
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+            const response = await fetch(url, options);
+            const data = await response.json();
+            log(`${method} ${url}: ${JSON.stringify(data)}`);
+            return data;
+        }
 
-        let authToken = allCookies['auth_token'] || null;
-        console.log("Auth token:", authToken);
+        async function requestRegisterCode() {
+            const email = document.getElementById('registerEmail').value;
+            await makeRequest('/api/users/register', 'POST', { email });
+        }
 
-        function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
+        async function completeRegistration() {
+            const email = document.getElementById('registerEmail').value;
+            const username = document.getElementById('registerUsername').value;
+            const code = document.getElementById('registerCode').value;
+            await makeRequest('/api/users/register/code', 'POST', { email, username, code });
         }
 
         async function requestLoginCode() {
             const emailOrUsername = document.getElementById('emailOrUsername').value;
-            try {
-                const response = await fetch('/api/users/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ emailOrUsername }),
-                });
-                const data = await response.json();
-                log(data.message);
-            } catch (error) {
-                log('Error requesting login code: ' + error.message);
-            }
+            await makeRequest('/api/users/login', 'POST', { emailOrUsername });
         }
 
         async function verifyLoginCode() {
             const emailOrUsername = document.getElementById('emailOrUsername').value;
             const code = document.getElementById('loginCode').value;
-            try {
-                const response = await fetch('/api/users/login/code', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ emailOrUsername, code }),
-                });
-                const data = await response.json();
-                log(data.message);
-                if (response.ok) {
-                    authToken = getCookie('auth_token');
-                    console.log('Auth Token:', authToken); // For debugging
-                    document.getElementById('connectSocketBtn').disabled = false;
-                }
-            } catch (error) {
-                log('Error verifying login code: ' + error.message);
-            }
+            await makeRequest('/api/users/login/code', 'POST', { emailOrUsername, code });
         }
 
-        function connectSocket() {
-
-
-            console.log('Attempting to connect with token:', authToken); // For debugging
-            socket = io('http://localhost:5000/', {
-                auth: {
-                    token: authToken
-                }
-            });
-
-            socket.on('connect', () => {
-                log('Connected to server');
-                document.getElementById('createGameBtn').disabled = false;
-                document.getElementById('joinGameBtn').disabled = false;
-            });
-
-            socket.on('connect_error', (error) => {
-                log('Connection error: ' + error.message);
-            });
-
-            socket.on('error', (data) => {
-                log('Error: ' + data.message);
-            });
-
-            socket.on('gameCreated', (data) => {
-                log('Game created: ' + JSON.stringify(data));
-            });
-
-            socket.on('gameJoined', (data) => {
-                log('Game joined: ' + JSON.stringify(data));
-            });
-
-            socket.on('newPlayerJoined', (data) => {
-                log('New player joined: ' + JSON.stringify(data));
-            });
-
-            socket.on('playerLeft', (data) => {
-                log('Player left: ' + JSON.stringify(data));
-            });
+        async function getProfile() {
+            await makeRequest('/api/users/profile', 'GET');
         }
 
-        function createGame() {
-            socket.emit('newGame');
+        async function updateUsername() {
+            const username = document.getElementById('newUsername').value;
+            await makeRequest('/api/users/profile/username', 'PUT', { username });
         }
 
-        function joinGame() {
-            const code = document.getElementById('gameCodeInput').value;
-            socket.emit('joinGame', code);
+        async function initiateEmailChange() {
+            await makeRequest('/api/users/profile/email', 'POST');
         }
 
-        function log(message) {
-            const logElement = document.getElementById('eventLog');
-            logElement.textContent += message + '\n';
+        async function updateEmail() {
+            const code = document.getElementById('emailChangeCode').value;
+            const newEmail = document.getElementById('newEmail').value;
+            await makeRequest('/api/users/profile/email', 'PUT', { code, newEmail });
+        }
+
+        async function confirmNewEmail() {
+            const newCode = document.getElementById('confirmNewEmailCode').value;
+            await makeRequest('/api/users/profile/email/code', 'POST', { newCode });
+        }
+
+        async function updateProfilePicture() {
+            const fileInput = document.getElementById('pfpFile');
+            const formData = new FormData();
+            formData.append('pfp', fileInput.files[0]);
+            const response = await fetch('/api/users/profile/pfp', {
+                method: 'PUT',
+                body: formData,
+                credentials: 'include',
+            });
+            const data = await response.json();
+            log(`PUT /api/users/profile/pfp: ${JSON.stringify(data)}`);
+        }
+
+        async function initiateAccountDeletion() {
+            await makeRequest('/api/users/delete-user', 'DELETE');
+        }
+
+        async function confirmAccountDeletion() {
+            const code = document.getElementById('deleteAccountCode').value;
+            await makeRequest('/api/users/delete-user/code', 'DELETE', { code });
+        }
+
+        async function logout() {
+            await makeRequest('/api/users/logout', 'GET');
         }
     </script>
 </body>

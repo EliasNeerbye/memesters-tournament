@@ -1,88 +1,91 @@
 # API Documentation
------------------------------------
-## API: User endpoints
+-------------------
+## User Endpoints
+
 All endpoints are prefixed with `/api/users/`.
 
-### Authentication Endpoints
+### Authentication
 
 #### Register User
-- **POST** `/api/users/register`
+- **POST** `/register`
   - **Request Body**: `{ email }`
-  - **Description**: Sends a verification code to the provided email to confirm ownership.
+  - **Description**: Initiates user registration by sending a verification code to the provided email.
 
 #### Complete Registration
-- **POST** `/api/users/register/code`
+- **POST** `/register/code`
   - **Request Body**: `{ email, username, code }`
-  - **Description**: Completes user registration using the verification code sent to their email.
-  - **Returns**: A JWT token upon successful registration.
+  - **Description**: Completes user registration using the verification code.
+  - **Returns**: JWT token on success.
 
 #### Login
-- **POST** `/api/users/login`
+- **POST** `/login`
   - **Request Body**: `{ emailOrUsername }`
-  - **Description**: Sends a login verification code to the user's email.
+  - **Description**: Initiates login by sending a verification code to the user's email.
 
 #### Complete Login
-- **POST** `/api/users/login/code`
+- **POST** `/login/code`
   - **Request Body**: `{ emailOrUsername, code }`
-  - **Description**: Verifies the login code and returns a JWT token.
+  - **Description**: Completes login by verifying the code.
+  - **Returns**: JWT token on success.
 
 #### Logout
-- **GET** `/api/users/logout`
-  - **Description**: Invalidates the current JWT token and logs the user out.
+- **GET** `/logout`
+  - **Description**: Invalidates the current JWT token and logs out the user.
 
-### User Profile Endpoints
+### User Profile
 
-#### Get User Profile
-- **GET** `/api/users/profile`
-  - **Requires**: Authorization Header with JWT Token
-  - **Description**: Returns user profile information.
+#### Get Profile
+- **GET** `/profile`
+  - **Description**: Retrieves user profile information.
+  - **Requires**: JWT token
 
 #### Update Username
-- **PUT** `/api/users/profile/username`
-  - **Requires**: Authorization Header with JWT Token
+- **PUT** `/profile/username`
   - **Request Body**: `{ username }`
   - **Description**: Updates the user's username.
+  - **Requires**: JWT token
 
 #### Initiate Email Change
-- **POST** `/api/users/profile/email`
-  - **Requires**: Authorization Header with JWT Token
-  - **Description**: Sends a verification code to the current email for confirmation before changing it.
+- **POST** `/profile/email`
+  - **Description**: Sends a verification code to the current email.
+  - **Requires**: JWT token
 
 #### Update Email
-- **PUT** `/api/users/profile/email`
-  - **Requires**: Authorization Header with JWT Token
+- **PUT** `/profile/email`
   - **Request Body**: `{ code, newEmail }`
-  - **Description**: Verifies the code and sends a new verification code to the new email.
+  - **Description**: Verifies the code and initiates change to the new email.
+  - **Requires**: JWT token
 
 #### Confirm New Email
-- **POST** `/api/users/profile/email/code`
-  - **Requires**: Authorization Header with JWT Token
+- **POST** `/profile/email/code`
   - **Request Body**: `{ newCode }`
-  - **Description**: Confirms the new email and updates the user's email.
+  - **Description**: Confirms and updates to the new email.
+  - **Requires**: JWT token
 
 #### Update Profile Picture
-- **PUT** `/api/users/profile/pfp`
-  - **Requires**: Authorization Header with JWT Token
-  - **Request Body**: Form data with 'pfp' file.
+- **PUT** `/profile/pfp`
+  - **Request Body**: Form data with 'pfp' file
   - **Description**: Updates the user's profile picture.
+  - **Requires**: JWT token
 
 ### Account Deletion
 
 #### Initiate Account Deletion
-- **DELETE** `/api/users/delete-user`
-  - **Requires**: Authorization Header with JWT Token
-  - **Description**: Sends a verification code to the user's email for confirmation before deletion.
+- **DELETE** `/delete-user`
+  - **Description**: Sends a verification code for account deletion.
+  - **Requires**: JWT token
 
 #### Confirm Account Deletion
-- **DELETE** `/api/users/delete-user/code`
-  - **Requires**: Authorization Header with JWT Token
+- **DELETE** `/delete-user/code`
   - **Request Body**: `{ code }`
-  - **Description**: Deletes the user account if the verification code is valid.
+  - **Description**: Deletes the user account if the code is valid.
+  - **Requires**: JWT token
 
-### Important Notes:
-1. All endpoints except registration and login require a valid JWT token in the Authorization header.
-2. The token should be included as follows: "Authorization: Bearer <token>"
-3. Many endpoints use a two-step verification process (send code, then verify code).
-4. Error responses will include a `message` field explaining the error.
-5. Successful responses typically include a `message` field and sometimes additional data (e.g., `token`, `pfpUrl`).
------------------------------------
+## Important Notes
+
+1. All endpoints except registration and login require a valid JWT token.
+2. Include the token in the Authorization header: `Authorization: Bearer <token>`.
+3. Many endpoints use a two-step verification process.
+4. Error responses include a `message` field explaining the error.
+5. Successful responses typically include a `message` field and sometimes additional data.
+-------------------

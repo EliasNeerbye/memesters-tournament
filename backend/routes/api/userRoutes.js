@@ -37,70 +37,31 @@ router.post('/register/code', async (req, res) => {
   const { email, username, code } = req.body;
 
   if (!email || !username || !code){
-    return res.status(400).json({message: "Something is missing"});
-  }
-
-  if (!validator.isEmail(email)) {
-    return res.status(400).json({ message: "Email is not valid." });
-  }
-
-  const isUser = await User.findOne({ $or: [{ email }, { username }] });
-  if (isUser) {
-    if (isUser.email === email) {
-      return res.status(400).json({ message: "Email is already registered." });
-    } else {
-      return res.status(400).json({ message: "Username is already taken." });
-    }
-  }
-
-  if (typeof username !== "string") {
-    return res.status(400).json({ message: "Username needs to contain letters!" });
-  }
-
-  if (username.length < 3 || username.length > 16) {
-    return res.status(400).json({ message: "Keep name between 3 and 16 characters long!" });
-  }
-
-  if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-    return res.status(400).json({ message: "Username can only contain letters, numbers, underscores, and hyphens!" });
-  }
-
-  if (!/[a-zA-Z]/.test(username)) {
-    return res.status(400).json({ message: "Username must contain at least one letter!" });
-  }
-
-  if (/[-_]{2,}|[-_][-_]/.test(username)) {
-    return res.status(400).json({ message: "Username cannot contain consecutive hyphens or underscores!" });
-  }
-
-  if (typeof code !== "string" || !/^\d{6}$/.test(code)) {
-    return res.status(400).json({ message: "Code needs to be a 6-digit number!" });
+      return res.status(400).json({message: "Something is missing"});
   }
 
   try {
-    const result = await AuthService.verifyLoginCode(email, code);
-    if (result) {
-      const isVerified = true;
-      const lastLogin = Date.now();
-      const user = new User({
-        username: username.trim(),
-        email,
-        isVerified,
-        lastLogin,
-      });
+      const result = await AuthService.verifyLoginCode(email, code);
+      if (result) {
+          const isVerified = true;
+          const lastLogin = Date.now();
+          const user = new User({
+              username: username.trim(),
+              email,
+              isVerified,
+              lastLogin,
+          });
   
-      const token = await user.generateAuthToken(req.ip);
-      await user.save();
-      return res.status(200).json({
-        message: "User registered!",
-        token: token,
-      });
-    }
+          const token = await user.generateAuthToken(req.ip);
+          await user.save();
+          
+          res.cookie('auth_token', token, AuthService.getCookieConfig());
+          return res.status(200).json({ message: "User registered!" });
+      }
   } catch (error) {
-    console.error('Registration error:', error);
-    return res.status(400).json({ message: error.message });
+      console.error('Registration error:', error);
+      return res.status(400).json({ message: error.message });
   }
-  
 });
 
 router.post('/login', async (req, res) => {
@@ -125,33 +86,26 @@ router.post('/login', async (req, res) => {
 router.post('/login/code', async (req, res) => {
   const {emailOrUsername, code} = req.body;
 
-  if (typeof code !== "string" || !/^\d{6}$/.test(code)) {
-    return res.status(400).json({ message: "Code needs to be a 6-digit number!" });
-  }
-
   const isUser = await User.findOne({ $or: [{ email: emailOrUsername }, { username: emailOrUsername }] });
   if (!isUser){
-    return res.status(400).json({message: "User does not exist!"})
+      return res.status(400).json({message: "User does not exist!"})
   }
 
   try {
-    const result = await AuthService.verifyLoginCode(isUser.email, code);
-    if (result) {
-      const token = await isUser.generateAuthToken(req.ip);
-      return res.status(200).json({
-        message: "User logged in!",
-        token: token,
-      });
-    }
+      const result = await AuthService.verifyLoginCode(isUser.email, code);
+      if (result) {
+          const token = await isUser.generateAuthToken(req.ip);
+          res.cookie('auth_token', token, AuthService.getCookieConfig());
+          return res.status(200).json({ message: "User logged in!" });
+      }
   } catch (error) {
-    console.error('Login error:', error);
-    return res.status(400).json({ message: error.message });
+      console.error('Login error:', error);
+      return res.status(400).json({ message: error.message });
   }
 });
 
-
 router.get('/profile', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -190,7 +144,7 @@ router.get('/profile', async (req, res) => {
 });
 
 router.put('/profile/username', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -247,7 +201,7 @@ router.put('/profile/username', async (req, res) => {
 });
 
 router.post('/profile/email', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -286,7 +240,7 @@ router.post('/profile/email', async (req, res) => {
 });
 
 router.put('/profile/email', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -316,6 +270,15 @@ router.put('/profile/email', async (req, res) => {
     return res.status(400).json({ message: "Code needs to be a 6-digit number!" });
   }
 
+  if (!newEmail){
+    return res.status(400).json({message:"You need to send a new email!"});
+  }
+
+  const alreadyExists = User.findOne({$or:[{email:newEmail},{tempEmail:newEmail}]});
+  if(alreadyExists.length > 0) {
+    return res.status(401).json({message: "Email is already in use!"})
+  }
+
   const isUser = await User.findOne({_id: user._id})
   if(!isUser){
     return res.status(400).json({message:"User does not exist!"});
@@ -340,7 +303,7 @@ router.put('/profile/email', async (req, res) => {
 });
 
 router.post('/profile/email/code', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -378,24 +341,35 @@ router.post('/profile/email/code', async (req, res) => {
   try {
     const result = await AuthService.verifyLoginCode(newEmail, newCode);
     if (result) {
-      isUser.email = newEmail;
-      isUser.tempEmail = null;
-      isUser.isVerified = true;
-      const newToken = await isUser.generateAuthToken(req.ip)
+      const updateQuery = {
+        $set: { email: newEmail, isVerified: true },
+        $unset: { tempEmail: "" }
+      };
+      
+      const userBefore = await User.findById(isUser._id);
+      console.log('User before update:', userBefore);
+
+      await User.updateOne({ _id: isUser._id }, updateQuery);
+
+      const userAfter = await User.findById(isUser._id);
+      console.log('User after update:', userAfter);
+
+      
+      const newToken = await isUser.generateAuthToken(req.ip);
       await isUser.save();
-      return res.status(201).json({message:"Email has been updated!", token:newToken});
+      return res.status(201).json({message: "Email has been updated!", token: newToken});
     } else {
-      return res.status(400).json({message:"Code validation failed!"});
+      return res.status(400).json({message: "Code validation failed!"});
     }
   } catch (error) {
     console.error('Login error:', error);
     return res.status(400).json({ message: error.message });
-  }
+  }  
 
 })
 
 router.put('/profile/pfp', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -469,37 +443,27 @@ router.put('/profile/pfp', async (req, res) => {
 
 router.get('/logout', async (req, res) => {
   try {
-    // Get the token from the Authorization header
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ message: 'No token, authorization denied' });
-    }
-    try {
+      const token = req.cookies.auth_token;
+      if (!token) {
+          return res.status(401).json({ message: 'No token, authorization denied' });
+      }
+
       const isBlacklisted = await AuthService.isTokenBlacklisted(token);
       if (isBlacklisted) {
           return res.status(401).json({ message: 'Token is no longer valid' });
       }
-    } catch (error) {
-        console.error('Token check error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
 
-    // Verify the token
-    const decoded = AuthService.jwtValidation(token, process.env.JWT_SECRET);
-
-    // Add the token to the blacklist
-    await TokenBlacklist.create({ token: token });
-
-    // Respond to the client
-    res.status(200).json({ message: 'Logged out successfully' });
+      await TokenBlacklist.create({ token });
+      res.clearCookie('auth_token', AuthService.getCookieConfig(true));
+      res.status(200).json({ message: 'Logged out successfully' });
   } catch (error) {
-    console.error('Logout error:', error);
-    res.status(500).json({ message: 'An error occurred during logout' });
+      console.error('Logout error:', error);
+      res.status(500).json({ message: 'An error occurred during logout' });
   }
 });
 
 router.delete('/delete-user', async (req, res) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -545,7 +509,7 @@ router.delete('/delete-user/code', async (req, res) => {
     return res.status(400).json({ message: "Code needs to be a 6-digit number!" });
   }
 
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const token = req.cookies.auth_token;
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
@@ -574,6 +538,7 @@ router.delete('/delete-user/code', async (req, res) => {
     if (result) {
       try {
         await User.findOneAndDelete({email:user.email});
+        res.clearCookie('auth_token', AuthService.getCookieConfig(true));
         return res.status(200).json({message:"User has been deleted!"})
       } catch (error) {
         console.error('Deletion error:', error);

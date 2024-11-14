@@ -20,7 +20,6 @@ const userSchema = new mongoose.Schema({
     email: {
         type: String,
         required: [true, 'Email is required'],
-        unique: true,
         lowercase: true,
         trim: true,
         validate: {
@@ -33,23 +32,7 @@ const userSchema = new mongoose.Schema({
         required: false,
         lowercase: true,
         trim: true,
-        validate: [
-            {
-                validator: function(v) {
-                    return v === null || validator.isEmail(v);
-                },
-                message: 'Invalid email address'
-            },
-            {
-                validator: async function(v) {
-                if (v === null) return true;
-                    const count = await this.constructor.countDocuments({ tempEmail: v });
-                    return count === 0;
-                },
-                message: 'Temporary email must be unique'
-            }
-        ]
-    },
+    },    
     pfp: {
         type: String,
         default: null
@@ -74,6 +57,10 @@ const userSchema = new mongoose.Schema({
                 date: { type: Date }
             }
         ]
+    },
+    currentGame: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Game'
     }
     }, { 
     timestamps: true
@@ -97,7 +84,7 @@ userSchema.methods.generateAuthToken = async function(ip) {
     // Save the updated user document
     await this.save();
 
-    const token = await jwt.sign(
+    const token = jwt.sign(
         { 
             _id: this._id,
             email: this.email

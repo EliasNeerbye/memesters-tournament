@@ -45,7 +45,7 @@ const rejoinGameHandler = (io, socket, activeGames) => async () => {
             players: currentGame.players.map(p => ({ id: p.userId, socketId: p.socketId }))
         });
         socket.join(currentGame._id.toString());
-        socket.to(currentGame._id.toString()).emit('playerRejoined', { playerId: player._id });
+        socket.to(currentGame._id.toString()).emit('playerRejoined', { playerInfo: { playerId: player._id, playerName: player.username } });
     } catch (error) {
         console.error('Rejoin game error:', error);
         socket.emit('error', { message: 'Internal server error' });

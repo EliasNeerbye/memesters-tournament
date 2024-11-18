@@ -21,6 +21,16 @@
     <h1>Meemesters Game Socket Test</h1>
 
     <div>
+        <h2>User Registration</h2>
+        <input type="email" id="email" placeholder="Enter Email">
+        <button onclick="registerEmail()">Register Email</button>
+        <br>
+        <input type="text" id="username" placeholder="Enter Username">
+        <input type="text" id="verificationCode" placeholder="Enter Verification Code">
+        <button onclick="verifyCode()">Verify Code</button>
+    </div>
+
+    <div>
         <h2>Game Actions</h2>
         <button onclick="createGame()" id="createGameBtn">Create New Game</button>
         <br>
@@ -49,6 +59,54 @@
             const timestamp = new Date().toLocaleTimeString();
             logElement.textContent += `[${timestamp}] ${message}\n`;
             logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // User Registration Functions
+        async function registerEmail() {
+            const email = document.getElementById('email').value;
+            if (!email) {
+                log('Error: Please enter an email');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/users/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email }),
+                });
+                const data = await response.json();
+                log(data.message);
+            } catch (error) {
+                log(`Registration Error: ${error.message}`);
+            }
+        }
+
+        async function verifyCode() {
+            const email = document.getElementById('email').value;
+            const username = document.getElementById('username').value;
+            const code = document.getElementById('verificationCode').value;
+
+            if (!email || !username || !code) {
+                log('Error: Please fill in all fields');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/users/register/code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, username, code }),
+                });
+                const data = await response.json();
+                log(data.message);
+            } catch (error) {
+                log(`Verification Error: ${error.message}`);
+            }
         }
 
         // Socket connection events

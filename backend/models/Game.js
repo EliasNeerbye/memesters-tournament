@@ -46,11 +46,24 @@ const gameSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-gameSchema.pre('save', async function(next) {
-    // If code is not already set, generate a new one
+gameSchema.pre('save', async function (next) {
+    // Automatically set game code if not already set
     if (!this.code) {
         this.code = crypto.randomInt(10000000, 99999999).toString();
     }
+
+    // If there are no players, handle based on game state
+    if (this.players.length === 0) {
+        if (this.state === 'waiting') {
+            // Delete the game if it's in 'waiting' with no players
+            await this.deleteOne();
+        } else if (this.state === 'playing') {
+            // Set game to 'finished' if it's in 'playing' with no players
+            this.state = 'finished';
+        }
+    }
+
+    next();
 });
 
 // Add method to check if game is full

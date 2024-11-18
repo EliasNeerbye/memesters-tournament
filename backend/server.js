@@ -26,6 +26,7 @@ const io = new Server(server, {
     }
 });
 
+app.use(cookieParser());
 GameSocket(io);
 
 // Enhanced MongoDB connection with error handling
@@ -45,9 +46,6 @@ const limiter = rateLimit({
   windowMs: 2 * 60 * 1000,
   max: 100 // limit each IP to 100 requests per windowMs
 });
-
-
-app.use(cookieParser());
 
 app.use(helmet({
     contentSecurityPolicy: {
@@ -70,17 +68,6 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
     exposedHeaders: ['Set-Cookie']
 }));
-
-
-const extractToken = (req, res, next) => {
-    const token = req.cookies.auth_token;
-    if (token) {
-        req.headers.authorization = `Bearer ${token}`;
-    }
-    next();
-};
-
-app.use(extractToken);
 
 app.use(compression()); // Compress response bodies
 // app.use(limiter); // Apply rate limiting

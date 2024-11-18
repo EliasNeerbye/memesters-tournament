@@ -3,61 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tests | Meemesters API</title>
+    <title>Memesters Game Socket Test</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        input, button { margin: 5px; padding: 5px; }
+        #eventLog { 
+            background-color: #f4f4f4; 
+            border: 1px solid #ddd; 
+            padding: 10px; 
+            max-height: 300px; 
+            overflow-y: scroll; 
+        }
+    </style>
 </head>
 <body>
-    <h1>Meemesters API Test</h1>
-    
-    <div>
-        <h2>Registration</h2>
-        <input type="email" id="registerEmail" placeholder="Email">
-        <button onclick="requestRegisterCode()">Request Register Code</button>
-        <br><br>
-        <input type="text" id="registerUsername" placeholder="Username">
-        <input type="text" id="registerCode" placeholder="Enter Register Code">
-        <button onclick="completeRegistration()">Complete Registration</button>
-    </div>
+    <h1>Meemesters Game Socket Test</h1>
 
     <div>
-        <h2>Login</h2>
-        <input type="text" id="emailOrUsername" placeholder="Email or Username">
-        <button onclick="requestLoginCode()">Request Login Code</button>
+        <h2>Game Actions</h2>
+        <button onclick="createGame()" id="createGameBtn">Create New Game</button>
+        <br>
+        <input type="text" id="gameCode" placeholder="Enter Game Code">
+        <button onclick="joinGame()" id="joinGameBtn">Join Game</button>
         <br><br>
-        <input type="text" id="loginCode" placeholder="Enter Login Code">
-        <button onclick="verifyLoginCode()">Verify Code</button>
-    </div>
-
-    <div>
-        <h2>User Profile</h2>
-        <button onclick="getProfile()">Get Profile</button>
-        <br><br>
-        <input type="text" id="newUsername" placeholder="New Username">
-        <button onclick="updateUsername()">Update Username</button>
-        <br><br>
-        <button onclick="initiateEmailChange()">Initiate Email Change</button>
-        <br><br>
-        <input type="text" id="emailChangeCode" placeholder="Email Change Code">
-        <input type="email" id="newEmail" placeholder="New Email">
-        <button onclick="updateEmail()">Update Email</button>
-        <br><br>
-        <input type="text" id="confirmNewEmailCode" placeholder="Confirm New Email Code">
-        <button onclick="confirmNewEmail()">Confirm New Email</button>
-        <br><br>
-        <input type="file" id="pfpFile" accept="image/*">
-        <button onclick="updateProfilePicture()">Update Profile Picture</button>
-    </div>
-
-    <div>
-        <h2>Account Deletion</h2>
-        <button onclick="initiateAccountDeletion()">Initiate Account Deletion</button>
-        <br><br>
-        <input type="text" id="deleteAccountCode" placeholder="Delete Account Code">
-        <button onclick="confirmAccountDeletion()">Confirm Account Deletion</button>
-    </div>
-
-    <div>
-        <h2>Logout</h2>
-        <button onclick="logout()">Logout</button>
+        <button onclick="finishGame()" id="finishGameBtn" disabled>Finish Game</button>
+        <button onclick="leaveGame()" id="leaveGameBtn" disabled>Leave Game</button>
+        <button onclick="rejoinGame()" id="rejoinGameBtn">Rejoin Game</button>
     </div>
 
     <div>
@@ -66,99 +38,116 @@
     </div>
 
     <script>
+        const socket = io({
+            transports: ['websocket']
+        });
+
+        let currentGameId = null; // To store the current game ID
+
         function log(message) {
             const logElement = document.getElementById('eventLog');
-            logElement.textContent += message + '\n';
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
         }
 
-        async function makeRequest(url, method, body = null) {
-            const options = {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include', // This ensures cookies are sent with the request
-            };
-            if (body) {
-                options.body = JSON.stringify(body);
+        // Socket connection events
+        socket.on('connect', () => {
+            log('Socket connected successfully');
+        });
+
+        socket.on('connect_error', (error) => {
+            log(`Connection Error: ${error.message}`);
+        });
+
+        // Game-related event listeners
+        socket.on('gameCreated', (data) => {
+            log(`Game Created: ID ${data.gameId}, Host ID ${data.hostId}, Code ${data.code}`);
+            currentGameId = data.gameId;
+            enableGameActions();
+        });
+
+        socket.on('gameJoined', (data) => {
+            log(`Joined Game: ID ${data.gameId}, Player ID ${data.playerId}`);
+            currentGameId = data.gameId;
+            enableGameActions();
+        });
+
+        socket.on('newPlayerJoined', (data) => {
+            log(`New Player Joined: ID ${data.playerId}`);
+        });
+
+        socket.on('gameFinished', (data) => {
+            log(`Game Finished: ${data.message}`);
+            disableGameActions();
+        });
+
+        socket.on('leftGame', (data) => {
+            log(`Left Game: ID ${data.gameId}`);
+            disableGameActions();
+        });
+
+        socket.on('playerLeft', (data) => {
+            log(`Player Left: ID ${data.playerId}`);
+        });
+
+        socket.on('gameRejoined', (data) => {
+            log(`Rejoined Game: ID ${data.gameId}, Player ID ${data.playerId}`);
+            log(`Game State: ${data.gameState}`);
+            log(`Players: ${JSON.stringify(data.players)}`);
+            currentGameId = data.gameId;
+            enableGameActions();
+        });
+
+        socket.on('playerRejoined', (data) => {
+            log(`Player Rejoined: ID ${data.playerId}`);
+        });
+
+        socket.on('gameDeleted', (data) => {
+            log(`Game Deleted: ${data.message}`);
+            disableGameActions();
+        });
+
+        socket.on('error', (data) => {
+            log(`Server Error: ${data.message}`);
+        });
+
+        // Enable the Finish Game and Leave Game buttons
+        function enableGameActions() {
+            document.getElementById('finishGameBtn').disabled = false;
+            document.getElementById('leaveGameBtn').disabled = false;
+        }
+
+        // Disable the Finish Game and Leave Game buttons
+        function disableGameActions() {
+            document.getElementById('finishGameBtn').disabled = true;
+            document.getElementById('leaveGameBtn').disabled = true;
+        }
+
+        // Game Action Handlers
+        function createGame() {
+            socket.emit('newGame');
+        }
+
+        function joinGame() {
+            const gameCode = document.getElementById('gameCode').value;
+            if (!gameCode) {
+                log('Error: Please enter a game code');
+                return;
             }
-            const response = await fetch(url, options);
-            const data = await response.json();
-            log(`${method} ${url}: ${JSON.stringify(data)}`);
-            return data;
+            socket.emit('joinGame', gameCode);
         }
 
-        async function requestRegisterCode() {
-            const email = document.getElementById('registerEmail').value;
-            await makeRequest('/api/users/register', 'POST', { email });
+        function finishGame() {
+            socket.emit('finishGame');
         }
 
-        async function completeRegistration() {
-            const email = document.getElementById('registerEmail').value;
-            const username = document.getElementById('registerUsername').value;
-            const code = document.getElementById('registerCode').value;
-            await makeRequest('/api/users/register/code', 'POST', { email, username, code });
+        function leaveGame() {
+            socket.emit('leaveGame');
         }
 
-        async function requestLoginCode() {
-            const emailOrUsername = document.getElementById('emailOrUsername').value;
-            await makeRequest('/api/users/login', 'POST', { emailOrUsername });
-        }
-
-        async function verifyLoginCode() {
-            const emailOrUsername = document.getElementById('emailOrUsername').value;
-            const code = document.getElementById('loginCode').value;
-            await makeRequest('/api/users/login/code', 'POST', { emailOrUsername, code });
-        }
-
-        async function getProfile() {
-            await makeRequest('/api/users/profile', 'GET');
-        }
-
-        async function updateUsername() {
-            const username = document.getElementById('newUsername').value;
-            await makeRequest('/api/users/profile/username', 'PUT', { username });
-        }
-
-        async function initiateEmailChange() {
-            await makeRequest('/api/users/profile/email', 'POST');
-        }
-
-        async function updateEmail() {
-            const code = document.getElementById('emailChangeCode').value;
-            const newEmail = document.getElementById('newEmail').value;
-            await makeRequest('/api/users/profile/email', 'PUT', { code, newEmail });
-        }
-
-        async function confirmNewEmail() {
-            const newCode = document.getElementById('confirmNewEmailCode').value;
-            await makeRequest('/api/users/profile/email/code', 'POST', { newCode });
-        }
-
-        async function updateProfilePicture() {
-            const fileInput = document.getElementById('pfpFile');
-            const formData = new FormData();
-            formData.append('pfp', fileInput.files[0]);
-            const response = await fetch('/api/users/profile/pfp', {
-                method: 'PUT',
-                body: formData,
-                credentials: 'include',
-            });
-            const data = await response.json();
-            log(`PUT /api/users/profile/pfp: ${JSON.stringify(data)}`);
-        }
-
-        async function initiateAccountDeletion() {
-            await makeRequest('/api/users/delete-user', 'DELETE');
-        }
-
-        async function confirmAccountDeletion() {
-            const code = document.getElementById('deleteAccountCode').value;
-            await makeRequest('/api/users/delete-user/code', 'DELETE', { code });
-        }
-
-        async function logout() {
-            await makeRequest('/api/users/logout', 'GET');
+        function rejoinGame() {
+            socket.emit('rejoinGame');
         }
     </script>
 </body>

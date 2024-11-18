@@ -38,7 +38,7 @@ const joinGameHandler = (io, socket, activeGames) => async (code) => {
             activeGames.get(game._id.toString()).sockets.add(socket.id);
         }
 
-        socket.emit('gameJoined', { gameId: game._id, playerId: player._id });
+        socket.emit('gameJoined', { gameId: game._id, playerInfo: { playerId: player._id, playerName: player.username } });
         socket.join(game._id.toString());
         socket.to(game._id.toString()).emit('newPlayerJoined', { playerId: player._id });
     } catch (error) {

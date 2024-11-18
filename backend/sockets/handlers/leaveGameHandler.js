@@ -28,7 +28,7 @@ const leaveGameHandler = (io, socket, activeGames) => async () => {
             await game.save();
             await User.updateOne({ _id: player._id }, { $unset: { currentGame: 1 } });
             socket.emit('leftGame', { gameId: game._id });
-            socket.to(game._id.toString()).emit('playerLeft', { playerId: player._id });
+            socket.to(game._id.toString()).emit('playerLeft', { playerInfo: { playerId: player._id, playerName: player.username } });
         }
 
         socket.leave(game._id.toString());

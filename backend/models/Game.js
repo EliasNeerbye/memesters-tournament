@@ -41,6 +41,14 @@ const gameSchema = new mongoose.Schema({
             default: 0
         }
     }],
+    settings: [{
+        rounds: {
+            type: Number,
+            required: true,
+            default: 5
+        },
+        // Other settings...?
+    }],
     code: {
         type: Number
     }

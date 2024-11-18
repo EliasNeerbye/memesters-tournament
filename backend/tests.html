@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meemesters Game Socket Test</title>
+    <title>Memesters Game Socket Test</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
@@ -29,6 +29,7 @@
         <br><br>
         <button onclick="finishGame()" id="finishGameBtn" disabled>Finish Game</button>
         <button onclick="leaveGame()" id="leaveGameBtn" disabled>Leave Game</button>
+        <button onclick="rejoinGame()" id="rejoinGameBtn">Rejoin Game</button>
     </div>
 
     <div>
@@ -77,18 +78,34 @@
         });
 
         socket.on('gameFinished', (data) => {
-            log(data.message);
+            log(`Game Finished: ${data.message}`);
             disableGameActions();
         });
 
         socket.on('leftGame', (data) => {
-            log(`Player ${data.playerId} has left the game`);
-            // Disable the buttons if no players are in the game or game is finished
+            log(`Left Game: ID ${data.gameId}`);
             disableGameActions();
         });
 
-        socket.on('hostChanged', (data) => {
-            log(`New host is Player ${data.newHostId}`);
+        socket.on('playerLeft', (data) => {
+            log(`Player Left: ID ${data.playerId}`);
+        });
+
+        socket.on('gameRejoined', (data) => {
+            log(`Rejoined Game: ID ${data.gameId}, Player ID ${data.playerId}`);
+            log(`Game State: ${data.gameState}`);
+            log(`Players: ${JSON.stringify(data.players)}`);
+            currentGameId = data.gameId;
+            enableGameActions();
+        });
+
+        socket.on('playerRejoined', (data) => {
+            log(`Player Rejoined: ID ${data.playerId}`);
+        });
+
+        socket.on('gameDeleted', (data) => {
+            log(`Game Deleted: ${data.message}`);
+            disableGameActions();
         });
 
         socket.on('error', (data) => {
@@ -127,6 +144,10 @@
 
         function leaveGame() {
             socket.emit('leaveGame');
+        }
+
+        function rejoinGame() {
+            socket.emit('rejoinGame');
         }
     </script>
 </body>

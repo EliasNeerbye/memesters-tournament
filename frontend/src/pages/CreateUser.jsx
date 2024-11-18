@@ -62,7 +62,6 @@ export default function CreateUser() {
 
       if (response.ok) {
         // Set JWT token in a cookie
-        document.cookie = `jwtToken=${data.token}; path=/; secure; HttpOnly; SameSite=Strict`;
         navigate('/profile'); // Redirect to profile page after successful registration
       } else {
         setErrorMessage(data.message || 'Registration failed.');

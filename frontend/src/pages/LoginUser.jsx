@@ -56,8 +56,6 @@ export default function LoginUser() {
       const data = await response.json();
   
       if (response.ok) {
-        // Store token in a cookie
-        document.cookie = `jwtToken=${data.token}; path=/; max-age=604800; Secure; SameSite=Strict`;
         navigate('/profile'); // Redirect to profile page after successful login
       } else {
         setErrorMessage(data.message || 'Invalid verification code.');

@@ -15,7 +15,7 @@ const submissionSchema = new mongoose.Schema({
 const roundSchema = new mongoose.Schema({
     gameId: { type: mongoose.Schema.Types.ObjectId, ref: 'Game', required: true },
     roundNumber: { type: Number, required: true },
-    memes: [{ type: String, required: true }],
+    memeTemplates: [{ type: String, required: true }], // Add this line
     submissions: [submissionSchema],
     status: { 
         type: String, 

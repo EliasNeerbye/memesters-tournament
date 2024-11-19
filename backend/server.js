@@ -54,7 +54,7 @@ app.use(helmet({
             scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.socket.io"],
             scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:"],
+            imgSrc: ["'self'", "data:", "https://api.memegen.link/"],
             connectSrc: ["'self'", "ws:", "wss:"],
             upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
         },

@@ -88,6 +88,9 @@
         <input type="text" id="gameCode" placeholder="Enter Game Code" />
         <button onclick="joinGame()" id="joinGameBtn">Join Game</button>
         <br /><br />
+        <button onclick="startGame()" id="startGameBtn" disabled>
+          Start Game
+        </button>
         <button onclick="finishGame()" id="finishGameBtn" disabled>
           Finish Game
         </button>
@@ -100,6 +103,11 @@
       <div class="section" id="lobbySection" style="display: none">
         <h2>Lobby</h2>
         <div id="playerList"></div>
+      </div>
+
+      <div class="section" id="gameplaySection" style="display: none">
+        <h2>Gameplay</h2>
+        <div id="memeList"></div>
       </div>
     </div>
 
@@ -405,6 +413,36 @@
         log(`Server Error: ${data.message}`);
       });
 
+      // Add these new event listeners
+      socket.on("gameStarted", (data) => {
+        log(`Game Started: ${JSON.stringify(data)}`);
+        document.getElementById("lobbySection").style.display = "none";
+        document.getElementById("gameplaySection").style.display = "block";
+        disableGameActions();
+        document.getElementById("startGameBtn").disabled = true;
+      });
+
+      socket.on("newRound", (data) => {
+        log(`New Round: ${JSON.stringify(data)}`);
+        displayMemes(data.memes);
+      });
+
+      // Function to display memes
+      function displayMemes(memes) {
+        const memeListElement = document.getElementById("memeList");
+        memeListElement.innerHTML = "";
+        memes.forEach((meme, index) => {
+          const memeItem = document.createElement("div");
+          memeItem.innerHTML = `
+            <h3>Meme ${index + 1}</h3>
+            <p>ID: ${meme.id}</p>
+            <p>Name: ${meme.name}</p>
+            <img src="${meme.blank}" alt="${meme.name}" style="max-width: 200px;">
+          `;
+          memeListElement.appendChild(memeItem);
+        });
+      }
+
       // Enable authenticated actions
       function enableAuthenticatedActions() {
         document.getElementById("createGameBtn").disabled = !isLoggedIn;
@@ -416,14 +454,14 @@
       function enableGameActions() {
         document.getElementById("finishGameBtn").disabled = !isHost;
         document.getElementById("leaveGameBtn").disabled = false;
+        document.getElementById("startGameBtn").disabled = !isHost;
       }
-
       // Disable the Finish Game and Leave Game buttons
       function disableGameActions() {
         document.getElementById("finishGameBtn").disabled = true;
-        document.getElementById("leaveGameBtn").disabled = true;
+        document.getElementById("leaveGameBtn").disabled = false;
+        document.getElementById("startGameBtn").disabled = true;
       }
-
       // Game Action Handlers
       function createGame() {
         socket.emit("newGame");
@@ -448,6 +486,14 @@
 
       function rejoinGame() {
         socket.emit("rejoinGame");
+      }
+
+      function startGame() {
+        if (!isHost) {
+          log("Error: Only the host can start the game");
+          return;
+        }
+        socket.emit("startGame");
       }
     </script>
   </body>

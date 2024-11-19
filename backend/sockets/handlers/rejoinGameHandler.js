@@ -7,7 +7,10 @@ const rejoinGameHandler = (io, socket, activeGames) => async () => {
         const player = await verifyUser(socket);
         if (!player) return;
 
-        const currentGame = await Game.findById(player.currentGame);
+        const currentGame = await Game.findById(player.currentGame)
+            .populate('players.userId', 'username pfp roles')
+            .populate('hostUserId', 'username pfp');
+        
         if (!currentGame) {
             await User.updateOne({ _id: player._id }, { $unset: { currentGame: 1 } });
             socket.emit('error', { message: 'You are not currently in any game.' });
@@ -20,18 +23,16 @@ const rejoinGameHandler = (io, socket, activeGames) => async () => {
             return;
         }
 
-        const playerIndex = currentGame.players.findIndex(p => p.userId.toString() === player._id.toString());
+        const playerIndex = currentGame.players.findIndex(p => p.userId._id.toString() === player._id.toString());
         if (playerIndex === -1) {
             await User.updateOne({ _id: player._id }, { $unset: { currentGame: 1 } });
             socket.emit('error', { message: 'You are not part of this game.' });
             return;
         }
 
-        // Update the player's socket ID in the game
         const oldSocketId = currentGame.players[playerIndex].socketId;
         currentGame.players[playerIndex].socketId = socket.id;
 
-        // Update activeGames if it exists
         if (activeGames.has(currentGame._id.toString())) {
             const gameData = activeGames.get(currentGame._id.toString());
             gameData.sockets.delete(oldSocketId);
@@ -42,10 +43,27 @@ const rejoinGameHandler = (io, socket, activeGames) => async () => {
             gameId: currentGame._id, 
             playerId: player._id,
             gameState: currentGame.state,
-            players: currentGame.players.map(p => ({ id: p.userId, socketId: p.socketId }))
+            host: {
+                id: currentGame.hostUserId._id,
+                username: currentGame.hostUserId.username,
+                pfp: currentGame.hostUserId.pfp
+            },
+            players: currentGame.players.map(p => ({ 
+                id: p.userId._id, 
+                username: p.userId.username,
+                pfp: p.userId.pfp,
+                socketId: p.socketId 
+            }))
         });
+
         socket.join(currentGame._id.toString());
-        socket.to(currentGame._id.toString()).emit('playerRejoined', { playerInfo: { playerId: player._id, playerName: player.username } });
+        socket.to(currentGame._id.toString()).emit('playerRejoined', { 
+            playerInfo: { 
+                playerId: player._id, 
+                playerName: player.username,
+                playerPfp: player.pfp 
+            } 
+        });
     } catch (error) {
         console.error('Rejoin game error:', error);
         socket.emit('error', { message: 'Internal server error' });

@@ -23,15 +23,18 @@ const userSchema = new mongoose.Schema({
         lowercase: true,
         trim: true,
         validate: {
-        validator: validator.isEmail,
-        message: 'Invalid email address'
+            validator: validator.isEmail,
+            message: 'Invalid email address'
         }
     },
     tempEmail: {
         type: String,
-        required: false,
         lowercase: true,
         trim: true,
+        validate: {
+            validator: validator.isEmail,
+            message: 'Invalid email address'
+        }
     },    
     pfp: {
         type: String,

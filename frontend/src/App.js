@@ -6,6 +6,7 @@ import LoginUser from "./pages/LoginUser";
 import ProfilePage from "./pages/ProfilePage";
 import LobbyPage from "./pages/LobbyPage";
 import NotFound from "./pages/NotFound";
+import Game from "./pages/Game";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/lobby" element={<LobbyPage />} />
       <Route path="*" element={<NotFound />} />
+      <Route path="/Game" element={<Game />} />
     </Routes>
   );
 }

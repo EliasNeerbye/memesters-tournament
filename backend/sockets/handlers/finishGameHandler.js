@@ -30,8 +30,6 @@ const finishGameHandler = (io, socket, activeGames) => async () => {
             io.to(game._id.toString()).emit('gameFinished', { message: 'Game has been finished by the host' });
         }
 
-        //TODO: make sure everything is saved ang whatever i guess
-
         if (activeGames.has(game._id.toString())) {
             const gameData = activeGames.get(game._id.toString());
             for (let i = 0; i < gameData.players.length; i++) {
@@ -40,6 +38,7 @@ const finishGameHandler = (io, socket, activeGames) => async () => {
             }
             activeGames.delete(game._id.toString());
         }
+        z;
     } catch (error) {
         console.error('Finish game error:', error);
         socket.emit('error', { message: 'Internal server error' });

@@ -30,6 +30,8 @@ const finishGameHandler = (io, socket, activeGames) => async () => {
             io.to(game._id.toString()).emit('gameFinished', { message: 'Game has been finished by the host' });
         }
 
+        //TODO: make sure everything is saved ang whatever i guess
+
         if (activeGames.has(game._id.toString())) {
             const gameData = activeGames.get(game._id.toString());
             for (const socketId of gameData.sockets) {

@@ -1,58 +1,74 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 
-const gameSchema = new mongoose.Schema({
-    hostUserId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    players: [{
-        userId: {
-        type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
-            required: true
-        },
-        socketId: {
-            type: String,
-            required: true
-        }
-    }],
-    currentRound: {
-        type: Number,
-        default: 0
-    },
-    state: {
-        type: String,
-        enum: ['waiting', 'playing', 'finished'],
-        default: 'waiting'
-    },
-    rounds: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Round'
-    }],
-    leaderboard: [{
-        userId: {
+const gameSchema = new mongoose.Schema(
+    {
+        hostUserId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'User'
-        },
-        score: {
-            type: Number,
-            default: 0
-        }
-    }],
-    settings: [{
-        rounds: {
-            type: Number,
+            ref: "User",
             required: true,
-            default: 5
         },
-        // Other settings...?
-    }],
-    code: {
-        type: Number
-    }
-}, { timestamps: true });
+        players: [
+            {
+                userId: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "User",
+                    required: true,
+                },
+                socketId: {
+                    type: String,
+                    required: true,
+                },
+            },
+        ],
+        currentRound: {
+            type: Number,
+            default: 0,
+        },
+        state: {
+            type: String,
+            enum: ["waiting", "playing", "finished"],
+            default: "waiting",
+        },
+        rounds: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Round",
+            },
+        ],
+        leaderboard: [
+            {
+                userId: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "User",
+                },
+                score: {
+                    type: Number,
+                    default: 0,
+                },
+            },
+        ],
+        settings: [
+            {
+                rounds: {
+                    type: Number,
+                    required: true,
+                    default: 5,
+                },
+                timeLimit: {
+                    type: Number,
+                    required: true,
+                    default: 300000,
+                },
+                // Other settings...?
+            },
+        ],
+        code: {
+            type: Number,
+        },
+    },
+    { timestamps: true }
+);
 
 gameSchema.pre('save', async function (next) {
     // Automatically set game code if not already set

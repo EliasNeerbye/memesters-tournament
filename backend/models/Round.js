@@ -12,19 +12,37 @@ const submissionSchema = new mongoose.Schema({
     }
 });
 
-const roundSchema = new mongoose.Schema({
-    gameId: { type: mongoose.Schema.Types.ObjectId, ref: 'Game', required: true },
-    roundNumber: { type: Number, required: true },
-    memeTemplates: [{ type: String, required: true }], // Add this line
-    submissions: [submissionSchema],
-    status: { 
-        type: String, 
-        enum: ['inProgress', 'completed'], 
-        default: 'inProgress' 
+const roundSchema = new mongoose.Schema(
+    {
+        gameId: { type: mongoose.Schema.Types.ObjectId, ref: "Game", required: true },
+        roundNumber: { type: Number, required: true },
+        memeTemplates: [
+            {
+                type: String,
+                required: true,
+                get: function (data) {
+                    try {
+                        return JSON.parse(data);
+                    } catch (error) {
+                        return data;
+                    }
+                },
+                set: function (data) {
+                    return JSON.stringify(data);
+                },
+            },
+        ],
+        submissions: [submissionSchema],
+        status: {
+            type: String,
+            enum: ["inProgress", "completed"],
+            default: "inProgress",
+        },
+        startTime: { type: Date, default: Date.now },
+        endTime: { type: Date },
     },
-    startTime: { type: Date, default: Date.now },
-    endTime: { type: Date }
-}, { timestamps: true });
+    { timestamps: true }
+);
 
 const Round = mongoose.model('Round', roundSchema);
 

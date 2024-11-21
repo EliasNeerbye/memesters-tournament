@@ -20,7 +20,7 @@ const gameSchema = new mongoose.Schema({
     }],
     currentRound: {
         type: Number,
-        default: 1
+        default: 0
     },
     state: {
         type: String,

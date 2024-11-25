@@ -1,48 +1,132 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
+const Round = require("../../models/Round");
+const User = require("../../models/User");
+const Game = require("../../models/Game");
+const AuthService = require("../../util/auth");
+require("dotenv").config();
 
-// @route   POST /api/games/initialize
-// @desc    Initialize a new game session
-// @access  Private
-router.post('/initialize', async (req, res) => {
-  // TODO: Implement game initialization
-  // 1. Create game session
-  // 2. Assign players
-  // 3. Set initial game state
+router.put("/submit-memes", async (req, res) => {
+    try {
+        const token = req.cookies.auth_token;
+        const isBlackListed = await AuthService.isTokenBlacklisted(token);
+        if (isBlackListed) {
+            return res.status(401).json({ error: "Token is blacklisted" });
+        }
+
+        const isUser = await AuthService.jwtValidation(token, process.env.JWT_SECRET);
+        if (!isUser || isUser.length < 1) {
+            return res.status(404).json({ error: "User not found!" });
+        }
+
+        const user = await User.findById(isUser._id);
+
+        const game = await Game.findById(user.currentGame);
+        if (!game || game.state !== "playing") {
+            return res.status(403).json({ error: "Game is not available or active" });
+        }
+
+        const roundNumber = game.currentRound;
+        const round = await Round.findOne({ gameId: game._id, roundNumber });
+        if (!round || round.status !== "submitting") {
+            return res.status(403).json({ error: "Round is not accepting submissions" });
+        }
+
+        if (round.endTime && new Date() > new Date(round.endTime)) {
+            return res.status(403).json({ error: "Submission window has closed" });
+        }
+
+        const { chosenTemplate } = req.body;
+        let { captions } = req.body;
+
+        // Parse memeTemplates correctly
+        let memeTemplates = [];
+        try {
+            round.memeTemplates.forEach((element) => {
+                memeTemplates.push(element);
+            });
+        } catch (error) {
+            return res.status(500).json({ error: "Failed to parse meme templates" });
+        }
+
+        const memeIndex = memeTemplates.findIndex((template) => template.blank === chosenTemplate);
+        if (memeIndex === -1) {
+            return res.status(400).json({ error: "Invalid meme template chosen" });
+        }
+
+        // Normalize captions
+        if (typeof captions === "string") {
+            captions = [captions.trim()];
+        } else if (Array.isArray(captions)) {
+            captions = captions.map((c) => (typeof c === "string" ? c.trim() : "")).filter((c) => c);
+        } else {
+            return res.status(400).json({ error: "Invalid captions provided" });
+        }
+
+        if (captions.length === 0) {
+            return res.status(400).json({ error: "Captions cannot be empty" });
+        }
+
+        const existingSubmission = round.submissions.find((sub) => sub.userId === user._id);
+        if (existingSubmission) {
+            return res.status(400).json({ error: "User has already submitted a meme for this round" });
+        }
+
+        const newSubmission = {
+            userId: user._id,
+            memeIndex,
+            captions,
+        };
+
+        round.submissions.push(newSubmission);
+
+        // Save the updated round
+        await round.save();
+
+        res.status(200).json({ message: "Meme submitted successfully", submission: newSubmission });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal server error" });
+    }
 });
 
-// @route   PUT /api/games/save-memes
-// @desc    Save memes created during game
-// @access  Private
-router.put('/save-memes', async (req, res) => {
-  // TODO: Implement meme saving
-  // 1. Validate meme data
-  // 2. Associate memes with game session
-});
+router.put("/updateSettings", async (req, res) => {
+    try {
+        const token = req.cookies.auth_token;
+        const isBlackListed = await AuthService.isTokenBlacklisted(token);
+        if (isBlackListed) {
+            return res.status(401).json({ error: "Token is blacklisted" });
+        }
 
-// @route   GET /api/games/get-memes
-// @desc    Retrieve memes for a game session
-// @access  Private
-router.get('/get-memes', async (req, res) => {
-  // TODO: Implement meme retrieval
-  // 1. Fetch memes for specific game session
-});
+        const isUser = await AuthService.jwtValidation(token, process.env.JWT_SECRET);
+        if (!isUser || isUser.length < 1) {
+            return res.status(404).json({ error: "User not found!" });
+        }
 
-// @route   PUT /api/games/save-scores
-// @desc    Save game scores
-// @access  Private
-router.put('/save-scores', async (req, res) => {
-  // TODO: Implement score saving
-  // 1. Validate score data
-  // 2. Update game and user scores
-});
+        const user = await User.findById(isUser._id);
 
-// @route   GET /api/games/get-scores
-// @desc    Retrieve game scores
-// @access  Private
-router.get('/get-scores', async (req, res) => {
-  // TODO: Implement score retrieval
-  // 1. Fetch scores for user or game session
+        const game = await Game.findById(user.currentGame);
+        if (!game || game.state !== "waiting") {
+            return res.status(403).json({ error: "Game is not available to changes" });
+        }
+
+        const { rounds, timeLimit } = req.body;
+        if (game.hostUserId == user._id) {
+            try {
+                game.settings.rounds = rounds;
+                game.settings.timeLimit = timeLimit;
+                await game.save();
+
+                return res.status(200).json({ message: "Updated settings" });
+            } catch (error) {
+                console.error(error);
+                return res.status(500).json({ error: "Internal server error" });
+            }
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal server error" });
+    }
 });
 
 module.exports = router;

@@ -1,78 +1,79 @@
-const User = require("../../models/User");
-const Game = require("../../models/Game");
 const Round = require("../../models/Round");
+const Game = require("../../models/Game");
 const { getRandomMemeTemplates } = require("../../util/memeUtils");
-const { activeGames, activeRounds } = require("./gameState");
+const { activeRounds } = require("./gameState");
 
 class MemeRound {
-    constructor(gameId, players) {
+    constructor(gameId, players, io) {
         this.gameId = gameId;
         this.players = players;
+        this.io = io;
         this.roundNumber = null;
-        this.memeTemplates;
-    }
-
-    async getMoreInfo() {
-        const game = await Game.findById(this.gameId);
-        if (!game) {
-            return { error: "Game not found" };
-        }
-
-        if (game.state !== "playing") {
-            return { error: "Game is not on-going" };
-        }
-
-        game.currentRound++;
-        await game.save();
-        this.roundNumber = game.currentRound;
-
-        this.memeTemplates = await getRandomMemeTemplates(12);
-
-        const newRound = new Round({
-            gameId: this.gameId,
-            roundNumber: this.roundNumber,
-            memeTemplates: this.memeTemplates,
-        });
-
-        await newRound.save();
-        return newRound;
+        this.memeTemplates = null;
     }
 
     async startRound() {
-        // Verify the game exists
         const game = await Game.findById(this.gameId);
         if (!game) {
             throw new Error("Game not found");
         }
 
-        // If this is the first round, create it
-        if (!this.roundNumber) {
-            await this.getMoreInfo();
-        }
+        // Increment and save the current round number
+        game.currentRound++;
+        await game.save();
 
-        // Find the current round
-        const currentRound = await Round.findOne({
+        this.roundNumber = game.currentRound;
+
+        // Fetch meme templates for the round
+        this.memeTemplates = await getRandomMemeTemplates(12);
+
+        const newRound = new Round({
             gameId: this.gameId,
             roundNumber: this.roundNumber,
+            submissions: [],
+            status: "submitting",
+            startTime: new Date(),
+            endTime: null,
         });
 
-        if (!currentRound) {
-            throw new Error("Round not found");
-        }
+        this.memeTemplates.forEach((element) => {
+            newRound.memeTemplates.push(element);
+        });
 
-        // Update round status
-        currentRound.status = "inProgress";
-        currentRound.startTime = new Date();
-        await currentRound.save();
+        await newRound.save();
 
         // Add to active rounds
-        activeRounds.set(currentRound._id.toString(), currentRound);
+        activeRounds.set(newRound._id.toString(), newRound);
 
-        return currentRound;
+        // Emit event to start the round
+        this.io.to(game.code.toString()).emit("roundStarted", {
+            roundNumber: newRound.roundNumber,
+            timeLimit: game.settings.timeLimit,
+        });
+
+        // Start the timer for the round using the timeLimit from game settings
+        setTimeout(async () => {
+            try {
+                const result = await this.endRound();
+                this.io.to(this.gameId.toString()).emit("roundEnded", {
+                    round: result.round,
+                    leaderboard: result.leaderboard,
+                });
+            } catch (error) {
+                console.error("Error ending round:", error);
+                this.io.to(this.gameId.toString()).emit("error", { message: "An error occurred while ending the round" });
+            }
+        }, game.settings.timeLimit);
+
+        return newRound;
     }
 
     async endRound() {
-        // Find the current round
+        const game = await Game.findById(this.gameId);
+        if (!game) {
+            throw new Error("Game not found");
+        }
+
         const currentRound = await Round.findOne({
             gameId: this.gameId,
             roundNumber: this.roundNumber,
@@ -82,17 +83,12 @@ class MemeRound {
             throw new Error("Round not found");
         }
 
-        // Calculate scores
+        // Calculate scores and update leaderboard
         const sortedSubmissions = currentRound.submissions.sort((a, b) => b.score - a.score);
-
-        // Update game leaderboard
-        const game = await Game.findById(this.gameId);
 
         sortedSubmissions.forEach((submission, index) => {
             const leaderboardEntry = game.leaderboard.find((entry) => entry.userId.equals(submission.userId));
-
             if (leaderboardEntry) {
-                // Award points based on submission ranking
                 switch (index) {
                     case 0:
                         leaderboardEntry.score += 3; // First place
@@ -113,6 +109,16 @@ class MemeRound {
         await currentRound.save();
         await game.save();
 
+        // Check if the game should end
+        if (game.currentRound >= game.settings.rounds) {
+            game.state = "finished"; // Set game to "finished"
+            await game.save();
+            this.io.to(game.code.toString()).emit("gameEnded", {
+                leaderboard: game.leaderboard,
+                message: "Game has ended!",
+            });
+        }
+
         // Remove from active rounds
         activeRounds.delete(currentRound._id.toString());
 
@@ -120,26 +126,6 @@ class MemeRound {
             round: currentRound,
             leaderboard: game.leaderboard,
         };
-    }
-
-    async saveRound(roundId, submissions) {
-        const round = await Round.findById(roundId);
-
-        if (!round) {
-            throw new Error("Round not found");
-        }
-
-        // Add submissions to the round
-        submissions.forEach((submission) => {
-            round.submissions.push({
-                userId: submission.userId,
-                memeId: submission.memeId,
-                caption: submission.caption,
-            });
-        });
-
-        await round.save();
-        return round;
     }
 }
 

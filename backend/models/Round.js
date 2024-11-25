@@ -1,15 +1,15 @@
 const mongoose = require('mongoose');
 
 const submissionSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    memeId: { type: String, required: true },
-    caption: { type: String, required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    memeIndex: { type: String, required: true },
+    captions: [{ type: String, required: true }],
     score: { type: Number, default: 0 },
-    status: { 
-        type: String, 
-        enum: ['pending', 'judged'], 
-        default: 'pending' 
-    }
+    status: {
+        type: String,
+        enum: ["pending", "judged"],
+        default: "pending",
+    },
 });
 
 const roundSchema = new mongoose.Schema(
@@ -35,8 +35,8 @@ const roundSchema = new mongoose.Schema(
         submissions: [submissionSchema],
         status: {
             type: String,
-            enum: ["inProgress", "completed"],
-            default: "inProgress",
+            enum: ["submitting", "judging", "completed"],
+            default: "submitting",
         },
         startTime: { type: Date, default: Date.now },
         endTime: { type: Date },

@@ -57,7 +57,7 @@ const gameSchema = new mongoose.Schema(
             timeLimit: {
                 type: Number,
                 required: true,
-                default: 60000,
+                default: 150000,
             },
             // Other settings...
         },

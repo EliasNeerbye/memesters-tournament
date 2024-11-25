@@ -129,4 +129,87 @@ router.put("/updateSettings", async (req, res) => {
     }
 });
 
+router.put("/submit-vote", async (req, res) => {
+    try {
+        const token = req.cookies.auth_token;
+        const isBlackListed = await AuthService.isTokenBlacklisted(token);
+        if (isBlackListed) {
+            return res.status(401).json({ error: "Token is blacklisted" });
+        }
+
+        const isUser = await AuthService.jwtValidation(token, process.env.JWT_SECRET);
+        if (!isUser || isUser.length < 1) {
+            return res.status(404).json({ error: "User not found!" });
+        }
+
+        const user = await User.findById(isUser._id);
+        if (!user) {
+            return res.status(404).json({ error: "User not found!" });
+        }
+
+        const game = await Game.findById(user.currentGame);
+        if (!game || game.state !== "playing") {
+            return res.status(403).json({ error: "Game is not available or active" });
+        }
+
+        const roundNumber = game.currentRound;
+        const round = await Round.findOne({ gameId: game._id, roundNumber });
+
+        if (!round || round.status !== "judging") {
+            return res.status(403).json({ error: "Round is not in judging phase" });
+        }
+
+        // Validate the request body
+        const { submissionsRanked } = req.body;
+
+        if (!Array.isArray(submissionsRanked)) {
+            return res.status(400).json({ error: "Invalid judgement format" });
+        }
+
+        // Verify all submission IDs exist in the round
+        const validSubmissionIds = round.submissions.map((sub) => sub._id.toString());
+        const allSubmissionsValid = submissionsRanked.every((subId) => validSubmissionIds.includes(subId.toString()));
+
+        if (!allSubmissionsValid) {
+            return res.status(400).json({ error: "Invalid submission IDs in judgement" });
+        }
+
+        // Verify user hasn't voted for their own submission
+        const userSubmission = round.submissions.find((sub) => sub.userId.toString() === user._id.toString());
+
+        if (userSubmission && submissionsRanked.includes(userSubmission._id.toString())) {
+            return res.status(400).json({ error: "Cannot vote for your own submission" });
+        }
+
+        // Check if user has already submitted a judgement
+        const existingJudgement = round.judgements.find((judge) => judge.userId.toString() === user._id.toString());
+
+        if (existingJudgement) {
+            // Update existing judgement
+            existingJudgement.submissionsRanked = submissionsRanked;
+        } else {
+            // Add new judgement
+            round.judgements.push({
+                userId: user._id,
+                submissionsRanked,
+            });
+        }
+
+        await round.save();
+
+        // Calculate how many players still need to submit judgements
+        const playersWhoCanJudge = game.players.length - 1; // Exclude the current player
+        const remainingJudgements = playersWhoCanJudge - round.judgements.length;
+
+        res.status(200).json({
+            message: "Judgement submitted successfully",
+            remainingJudgements,
+            totalPlayers: playersWhoCanJudge,
+        });
+    } catch (error) {
+        console.error("Error in submit-judgement:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
 module.exports = router;

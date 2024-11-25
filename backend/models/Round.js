@@ -12,6 +12,11 @@ const submissionSchema = new mongoose.Schema({
     },
 });
 
+const judgementSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    submissionsRanked: [{ type: Number, required: true }],
+});
+
 const roundSchema = new mongoose.Schema(
     {
         gameId: { type: mongoose.Schema.Types.ObjectId, ref: "Game", required: true },
@@ -33,6 +38,7 @@ const roundSchema = new mongoose.Schema(
             },
         ],
         submissions: [submissionSchema],
+        judgements: [judgementSchema],
         status: {
             type: String,
             enum: ["submitting", "judging", "completed"],

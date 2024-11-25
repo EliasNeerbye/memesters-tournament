@@ -6,6 +6,7 @@ const removeUserHandler = require('./removeUserHandler');
 
 const startGameHandler = require('./startGameHandler');
 const finishGameHandler = require('./finishGameHandler');
+const newRoundHandler = require("./nextRoundHandler");
 
 const gameEventHandlers = (io, socket, activeGames) => {
     // Connections
@@ -17,6 +18,7 @@ const gameEventHandlers = (io, socket, activeGames) => {
 
     //Game Events
     socket.on('startGame', startGameHandler(io, socket, activeGames));
+    socket.on("newRound", newRoundHandler(io, socket, activeGames));
     socket.on('finishGame', finishGameHandler(io, socket, activeGames));
 };
 

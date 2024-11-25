@@ -111,6 +111,18 @@
       </div>
     </div>
 
+    <!-- New Section for Meme Submission -->
+    <div class="section" id="memeSubmissionSection">
+      <h2>Submit Meme</h2>
+      <input type="text" id="chosenTemplate" placeholder="Meme Template ID" />
+      <input
+        type="text"
+        id="captions"
+        placeholder="Enter Caption(s) (comma-separated for multiple)"
+      />
+      <button onclick="submitMeme()">Submit Meme</button>
+    </div>
+
     <div>
       <h2>Events Log</h2>
       <pre id="eventLog"></pre>
@@ -319,6 +331,11 @@
         log("Socket connected successfully");
       });
 
+      // Socket connection events
+      socket.on("roundEnded", () => {
+        log("Round has ended!");
+      });
+
       socket.on("connect_error", (error) => {
         log(`Connection Error: ${error.message}`);
       });
@@ -494,6 +511,41 @@
           return;
         }
         socket.emit("startGame");
+      }
+
+      // Function to handle meme submission
+      async function submitMeme() {
+        const chosenTemplate = document.getElementById("chosenTemplate").value;
+        const captionsInput = document.getElementById("captions").value;
+
+        if (!chosenTemplate || !captionsInput) {
+          log("Error: Both Template ID and Captions are required");
+          return;
+        }
+
+        // Prepare captions: check if input includes commas for multiple captions
+        const captions = captionsInput.includes(",")
+          ? captionsInput.split(",").map(c => c.trim())
+          : captionsInput.trim();
+
+        try {
+          const response = await fetch("/api/games/submit-memes", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ chosenTemplate, captions }),
+          });
+
+          const data = await response.json();
+          if (response.ok) {
+            log(`Meme submitted successfully: ${JSON.stringify(data)}`);
+          } else {
+            log(`Submission failed: ${data.error}`);
+          }
+        } catch (error) {
+          log(`Error submitting meme: ${error.message}`);
+        }
       }
     </script>
   </body>

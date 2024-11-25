@@ -38,7 +38,6 @@ const finishGameHandler = (io, socket, activeGames) => async () => {
             }
             activeGames.delete(game._id.toString());
         }
-        z;
     } catch (error) {
         console.error('Finish game error:', error);
         socket.emit('error', { message: 'Internal server error' });

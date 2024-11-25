@@ -48,21 +48,20 @@ const gameSchema = new mongoose.Schema(
                 },
             },
         ],
-        settings: [
-            {
-                rounds: {
-                    type: Number,
-                    required: true,
-                    default: 5,
-                },
-                timeLimit: {
-                    type: Number,
-                    required: true,
-                    default: 300000,
-                },
-                // Other settings...?
+        settings: {
+            rounds: {
+                type: Number,
+                required: true,
+                default: 5,
             },
-        ],
+            timeLimit: {
+                type: Number,
+                required: true,
+                default: 60000,
+            },
+            // Other settings...
+        },
+
         code: {
             type: Number,
         },

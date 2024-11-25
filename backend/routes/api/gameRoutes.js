@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Round = require("../../models/Round");
+const User = require("../../models/User");
 const Game = require("../../models/Game");
 const AuthService = require("../../util/auth");
 require("dotenv").config();
@@ -18,7 +19,9 @@ router.put("/submit-memes", async (req, res) => {
             return res.status(404).json({ error: "User not found!" });
         }
 
-        const game = await Game.findById(isUser.currentGame);
+        const user = await User.findById(isUser._id);
+
+        const game = await Game.findById(user.currentGame);
         if (!game || game.state !== "playing") {
             return res.status(403).json({ error: "Game is not available or active" });
         }
@@ -36,16 +39,17 @@ router.put("/submit-memes", async (req, res) => {
         const { chosenTemplate } = req.body;
         let { captions } = req.body;
 
-        // Parse and validate chosenTemplate
-        const memeTemplates = round.memeTemplates.map((template) => {
-            try {
-                return JSON.parse(template);
-            } catch {
-                return template;
-            }
-        });
+        // Parse memeTemplates correctly
+        let memeTemplates = [];
+        try {
+            round.memeTemplates.forEach((element) => {
+                memeTemplates.push(element);
+            });
+        } catch (error) {
+            return res.status(500).json({ error: "Failed to parse meme templates" });
+        }
 
-        const memeIndex = memeTemplates.indexOf(chosenTemplate);
+        const memeIndex = memeTemplates.findIndex((template) => template.blank === chosenTemplate);
         if (memeIndex === -1) {
             return res.status(400).json({ error: "Invalid meme template chosen" });
         }
@@ -63,21 +67,62 @@ router.put("/submit-memes", async (req, res) => {
             return res.status(400).json({ error: "Captions cannot be empty" });
         }
 
-        const existingSubmission = round.submissions.find((sub) => sub.userId.toString() === isUser._id);
+        const existingSubmission = round.submissions.find((sub) => sub.userId === user._id);
         if (existingSubmission) {
             return res.status(400).json({ error: "User has already submitted a meme for this round" });
         }
 
         const newSubmission = {
-            userId: isUser._id,
+            userId: user._id,
             memeIndex,
             captions,
         };
 
         round.submissions.push(newSubmission);
+
+        // Save the updated round
         await round.save();
 
         res.status(200).json({ message: "Meme submitted successfully", submission: newSubmission });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+router.put("/updateSettings", async (req, res) => {
+    try {
+        const token = req.cookies.auth_token;
+        const isBlackListed = await AuthService.isTokenBlacklisted(token);
+        if (isBlackListed) {
+            return res.status(401).json({ error: "Token is blacklisted" });
+        }
+
+        const isUser = await AuthService.jwtValidation(token, process.env.JWT_SECRET);
+        if (!isUser || isUser.length < 1) {
+            return res.status(404).json({ error: "User not found!" });
+        }
+
+        const user = await User.findById(isUser._id);
+
+        const game = await Game.findById(user.currentGame);
+        if (!game || game.state !== "waiting") {
+            return res.status(403).json({ error: "Game is not available to changes" });
+        }
+
+        const { rounds, timeLimit } = req.body;
+        if (game.hostUserId == user._id) {
+            try {
+                game.settings.rounds = rounds;
+                game.settings.timeLimit = timeLimit;
+                await game.save();
+
+                return res.status(200).json({ message: "Updated settings" });
+            } catch (error) {
+                console.error(error);
+                return res.status(500).json({ error: "Internal server error" });
+            }
+        }
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Internal server error" });

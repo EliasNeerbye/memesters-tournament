@@ -1,552 +1,181 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Memesters Game Socket Test</title>
-    <script src="/socket.io/socket.io.js"></script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Test</title>
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
-      }
-      input,
-      button {
-        margin: 5px;
-        padding: 5px;
-      }
-      #eventLog {
-        background-color: #f4f4f4;
-        border: 1px solid #ddd;
-        padding: 10px;
-        max-height: 300px;
-        overflow-y: scroll;
-      }
-      .section {
-        margin-bottom: 20px;
-      }
-      #playerList {
-        border: 1px solid #ddd;
-        padding: 10px;
-        margin-top: 10px;
-      }
-      .player-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin: 5px 0;
-        padding: 5px;
-        background-color: #f9f9f9;
-      }
-      .remove-player-btn {
-        color: red;
-        cursor: pointer;
-      }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin: 5px 0;
+        }
+        input, button, select {
+            margin: 5px 0;
+        }
     </style>
-  </head>
-  <body>
-    <h1>Meemesters Game Socket Test</h1>
+</head>
+<body>
+    <h1>Game Testing Interface</h1>
 
-    <div id="authSection" style="display: none">
-      <div class="section">
-        <h2>User Login</h2>
-        <input
-          type="text"
-          id="loginEmailOrUsername"
-          placeholder="Email or Username"
-        />
-        <button onclick="initiateLogin()">Send Login Code</button>
-        <br />
-        <input type="text" id="loginCode" placeholder="Enter Login Code" />
-        <button onclick="verifyLoginCode()">Verify Login</button>
-      </div>
-
-      <div class="section">
-        <h2>User Registration</h2>
-        <input type="email" id="email" placeholder="Enter Email" />
-        <button onclick="registerEmail()">Register Email</button>
-        <br />
-        <input type="text" id="username" placeholder="Enter Username" />
-        <input
-          type="text"
-          id="verificationCode"
-          placeholder="Enter Verification Code"
-        />
-        <button onclick="verifyCode()">Verify Code</button>
-      </div>
+    <!-- Section for creating and joining games -->
+    <div class="section">
+        <h2>Game Management</h2>
+        <button id="newGameBtn">Create New Game</button>
+        <input type="text" id="gameCode" placeholder="Game Code">
+        <button id="joinGameBtn">Join Game</button>
     </div>
 
-    <div id="gameSection" style="display: none">
-      <div class="section">
-        <h2>Game Actions</h2>
-        <button onclick="createGame()" id="createGameBtn">
-          Create New Game
-        </button>
-        <br />
-        <input type="text" id="gameCode" placeholder="Enter Game Code" />
-        <button onclick="joinGame()" id="joinGameBtn">Join Game</button>
-        <br /><br />
-        <button onclick="startGame()" id="startGameBtn" disabled>
-          Start Game
-        </button>
-        <button onclick="finishGame()" id="finishGameBtn" disabled>
-          Finish Game
-        </button>
-        <button onclick="leaveGame()" id="leaveGameBtn" disabled>
-          Leave Game
-        </button>
-        <button onclick="rejoinGame()" id="rejoinGameBtn">Rejoin Game</button>
-      </div>
-
-      <div class="section" id="lobbySection" style="display: none">
-        <h2>Lobby</h2>
-        <div id="playerList"></div>
-      </div>
-
-      <div class="section" id="gameplaySection" style="display: none">
-        <h2>Gameplay</h2>
-        <div id="memeList"></div>
-      </div>
+    <!-- Section for starting a game -->
+    <div class="section">
+        <h2>Start Game</h2>
+        <button id="startGameBtn">Start Game</button>
     </div>
 
-    <!-- New Section for Meme Submission -->
-    <div class="section" id="memeSubmissionSection">
-      <h2>Submit Meme</h2>
-      <input type="text" id="chosenTemplate" placeholder="Meme Template ID" />
-      <input
-        type="text"
-        id="captions"
-        placeholder="Enter Caption(s) (comma-separated for multiple)"
-      />
-      <button onclick="submitMeme()">Submit Meme</button>
+    <!-- Section for testing rounds -->
+    <div class="section">
+        <h2>Rounds</h2>
+        <button id="newRoundBtn">Start New Round</button>
+
+        <div id="templateSelection" style="display:none;">
+            <h3>Select a Template</h3>
+            <select id="templateDropdown"></select>
+            <div id="captionInputs"></div>
+            <button id="submitMemeBtn">Submit Meme</button>
+        </div>
     </div>
 
-    <div>
-      <h2>Events Log</h2>
-      <pre id="eventLog"></pre>
+    <div class="section">
+        <h2>Logs</h2>
+        <textarea id="logs" rows="15" cols="80" readonly></textarea>
     </div>
 
     <script>
-      const socket = io({
-        transports: ["websocket"],
-      });
-      let currentGameId = null;
-      let isLoggedIn = false;
-      let isHost = false;
-      let currentPlayerId = null;
+        const socket = io('http://localhost:5000'); // Backend URL
+        let currentGameCode = '';
+        let memeTemplates = [];
 
-      // Check login status when page loads
-      window.onload = checkLoginStatus;
-
-      async function checkLoginStatus() {
-        try {
-          const response = await fetch("/api/users/isLoggedIn");
-          if (response.status === 201) {
-            isLoggedIn = true;
-            showGameSection();
-          } else {
-            showAuthSection();
-          }
-        } catch (error) {
-          log(`Error checking login status: ${error.message}`);
-          showAuthSection();
-        }
-      }
-
-      function showAuthSection() {
-        document.getElementById("authSection").style.display = "block";
-        document.getElementById("gameSection").style.display = "none";
-      }
-
-      function showGameSection() {
-        document.getElementById("authSection").style.display = "none";
-        document.getElementById("gameSection").style.display = "block";
-      }
-
-      function log(message) {
-        const logElement = document.getElementById("eventLog");
-        const timestamp = new Date().toLocaleTimeString();
-        logElement.textContent += `[${timestamp}] ${message}\n`;
-        logElement.scrollTop = logElement.scrollHeight;
-      }
-
-      // Login Functions
-      async function initiateLogin() {
-        const emailOrUsername = document.getElementById(
-          "loginEmailOrUsername"
-        ).value;
-        if (!emailOrUsername) {
-          log("Error: Please enter email or username");
-          return;
-        }
-        try {
-          const response = await fetch("/api/users/login", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ emailOrUsername }),
-          });
-          const data = await response.json();
-          log(data.message);
-        } catch (error) {
-          log(`Login Error: ${error.message}`);
-        }
-      }
-
-      // Update verifyLoginCode function
-      async function verifyLoginCode() {
-        const emailOrUsername = document.getElementById(
-          "loginEmailOrUsername"
-        ).value;
-        const code = document.getElementById("loginCode").value;
-        if (!emailOrUsername || !code) {
-          log("Error: Please fill in all fields");
-          return;
-        }
-        try {
-          const response = await fetch("/api/users/login/code", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ emailOrUsername, code }),
-          });
-          const data = await response.json();
-          log(data.message);
-
-          if (response.ok) {
-            isLoggedIn = true;
-            showGameSection();
-          }
-        } catch (error) {
-          log(`Login Verification Error: ${error.message}`);
-        }
-      }
-
-      // Update verifyCode function
-      async function verifyCode() {
-        const email = document.getElementById("email").value;
-        const username = document.getElementById("username").value;
-        const code = document.getElementById("verificationCode").value;
-        if (!email || !username || !code) {
-          log("Error: Please fill in all fields");
-          return;
-        }
-        try {
-          const response = await fetch("/api/users/register/code", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ email, username, code }),
-          });
-          const data = await response.json();
-          log(data.message);
-
-          if (response.ok) {
-            isLoggedIn = true;
-            showGameSection();
-          }
-        } catch (error) {
-          log(`Verification Error: ${error.message}`);
-        }
-      }
-
-      // User Registration Functions
-      async function registerEmail() {
-        const email = document.getElementById("email").value;
-        if (!email) {
-          log("Error: Please enter an email");
-          return;
-        }
-        try {
-          const response = await fetch("/api/users/register", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ email }),
-          });
-          const data = await response.json();
-          log(data.message);
-        } catch (error) {
-          log(`Registration Error: ${error.message}`);
-        }
-      }
-
-      // Lobby Management
-      function updatePlayerList(players) {
-        const playerListElement = document.getElementById("playerList");
-        const lobbySection = document.getElementById("lobbySection");
-
-        // Clear existing list
-        playerListElement.innerHTML = "";
-
-        // If no players, hide lobby section
-        if (!players || players.length === 0) {
-          lobbySection.style.display = "none";
-          return;
+        // Utility function to log responses
+        function logResponse(message) {
+            const logs = document.getElementById('logs');
+            logs.value += `${new Date().toLocaleTimeString()} - ${message}\n`;
+            logs.scrollTop = logs.scrollHeight; // Auto-scroll to bottom
         }
 
-        // Show lobby section
-        lobbySection.style.display = "block";
-
-        // Populate player list
-        players.forEach((player) => {
-          const playerItem = document.createElement("div");
-          playerItem.classList.add("player-item");
-
-          // Player name
-          const playerName = document.createElement("span");
-          playerName.textContent =
-            player.playerName || player.username || player.id;
-          playerItem.appendChild(playerName);
-
-          // Remove player button (only show for host)
-          if (isHost && player.id !== currentPlayerId) {
-            const removeBtn = document.createElement("button");
-            removeBtn.textContent = "Remove";
-            removeBtn.classList.add("remove-player-btn");
-            removeBtn.onclick = () => removePlayer(player.id);
-            playerItem.appendChild(removeBtn);
-          }
-
-          playerListElement.appendChild(playerItem);
+        // Create new game
+        document.getElementById('newGameBtn').addEventListener('click', () => {
+            socket.emit('newGame');
+            socket.on('gameCreated', (data) => {
+                console.log('Game Created:', data);
+                logResponse(`Game Created: ${JSON.stringify(data)}`);
+                currentGameCode = data.code;
+                alert(`New Game Created. Code: ${currentGameCode}`);
+            });
         });
-      }
 
-      function removePlayer(playerId) {
-        if (!isHost) {
-          log("Error: Only the host can remove players");
-          return;
-        }
-        socket.emit("removeUser", playerId);
-      }
-
-      // Socket connection events
-      socket.on("connect", () => {
-        log("Socket connected successfully");
-      });
-
-      // Socket connection events
-      socket.on("roundEnded", () => {
-        log("Round has ended!");
-      });
-
-      socket.on("connect_error", (error) => {
-        log(`Connection Error: ${error.message}`);
-      });
-
-      // Game-related event listeners
-      socket.on("gameCreated", (data) => {
-        log(
-          `Game Created: ID ${data.gameId}, Host ID ${data.hostInfo.playerId}, Host Name: ${data.hostInfo.playerName}, Code ${data.code}`
-        );
-        currentGameId = data.gameId;
-        currentPlayerId = data.hostInfo.playerId;
-        isHost = true;
-        enableGameActions();
-        document.getElementById("lobbySection").style.display = "block";
-        updatePlayerList([
-          {
-            id: data.hostInfo.playerId,
-            playerName: data.hostInfo.playerName,
-          },
-        ]);
-      });
-
-      socket.on("gameJoined", (data) => {
-        log(
-          `Joined Game: ID ${data.gameId}, Player ID ${data.playerInfo.playerId}`
-        );
-        currentGameId = data.gameId;
-        currentPlayerId = data.playerInfo.playerId;
-        enableGameActions();
-      });
-
-      socket.on("newPlayerJoined", (data) => {
-        log(`New Player Joined: ID ${data.playerId}`);
-        // Request updated player list
-        socket.emit("getPlayerList", currentGameId);
-      });
-
-      socket.on("playerList", (data) => {
-        log("Received player list");
-        updatePlayerList(data.players);
-      });
-
-      socket.on("playerRemoved", (data) => {
-        log(`Player Removed: ID ${data.removedPlayerId}`);
-        // Request updated player list
-        socket.emit("getPlayerList", currentGameId);
-      });
-
-      socket.on("gameFinished", (data) => {
-        log(`Game Finished: ${data.message}`);
-        disableGameActions();
-        document.getElementById("lobbySection").style.display = "none";
-        isHost = false;
-      });
-
-      socket.on("leftGame", (data) => {
-        log(`Left Game: ID ${data.gameId}`);
-        disableGameActions();
-        document.getElementById("lobbySection").style.display = "none";
-        isHost = false;
-      });
-
-      socket.on("playerLeft", (data) => {
-        log(`Player Left: ID ${data.playerInfo.playerId}`);
-        // Request updated player list
-        socket.emit("getPlayerList", currentGameId);
-      });
-
-      socket.on("gameRejoined", (data) => {
-        log(`Rejoined Game: ID ${data.gameId}, Player ID ${data.playerName}`);
-        log(`Game State: ${data.gameState}`);
-        log(`Players: ${JSON.stringify(data.players)}`);
-        currentGameId = data.gameId;
-        currentPlayerId = data.playerId;
-
-        // Check if player is host
-        isHost = data.players.some((p) => p.id === currentPlayerId && p.isHost);
-
-        enableGameActions();
-        updatePlayerList(data.players);
-        document.getElementById("lobbySection").style.display = "block";
-      });
-
-      socket.on("gameDeleted", (data) => {
-        log(`Game Deleted: ${data.message}`);
-        disableGameActions();
-        document.getElementById("lobbySection").style.display = "none";
-        isHost = false;
-      });
-
-      socket.on("error", (data) => {
-        log(`Server Error: ${data.message}`);
-      });
-
-      // Add these new event listeners
-      socket.on("gameStarted", (data) => {
-        log(`Game Started: ${JSON.stringify(data)}`);
-        document.getElementById("lobbySection").style.display = "none";
-        document.getElementById("gameplaySection").style.display = "block";
-        disableGameActions();
-        document.getElementById("startGameBtn").disabled = true;
-      });
-
-      socket.on("newRound", (data) => {
-        log(`New Round: ${JSON.stringify(data)}`);
-        displayMemes(data.memes);
-      });
-
-      // Function to display memes
-      function displayMemes(memes) {
-        const memeListElement = document.getElementById("memeList");
-        memeListElement.innerHTML = "";
-        memes.forEach((meme, index) => {
-          const memeItem = document.createElement("div");
-          memeItem.innerHTML = `
-            <h3>Meme ${index + 1}</h3>
-            <p>ID: ${meme.id}</p>
-            <p>Name: ${meme.name}</p>
-            <img src="${meme.blank}" alt="${meme.name}" style="max-width: 200px;">
-          `;
-          memeListElement.appendChild(memeItem);
+        // Join a game
+        document.getElementById('joinGameBtn').addEventListener('click', () => {
+            const gameCode = document.getElementById('gameCode').value || currentGameCode;
+            if (!gameCode) return alert('Enter a valid game code!');
+            socket.emit('joinGame', { code: gameCode });
+            socket.on('joinedGame', (data) => {
+                console.log('Joined Game:', data);
+                logResponse(`Joined Game: ${JSON.stringify(data)}`);
+                alert('Successfully joined the game!');
+            });
         });
-      }
 
-      // Enable authenticated actions
-      function enableAuthenticatedActions() {
-        document.getElementById("createGameBtn").disabled = !isLoggedIn;
-        document.getElementById("joinGameBtn").disabled = !isLoggedIn;
-        document.getElementById("rejoinGameBtn").disabled = !isLoggedIn;
-      }
+        // Start game
+        document.getElementById('startGameBtn').addEventListener('click', () => {
+            socket.emit('startGame');
+            socket.on('gameStarted', (data) => {
+                console.log('Game Started:', data);
+                logResponse(`Game Started: ${JSON.stringify(data)}`);
+                alert('Game started!');
+            });
+        });
 
-      // Enable the Finish Game and Leave Game buttons
-      function enableGameActions() {
-        document.getElementById("finishGameBtn").disabled = !isHost;
-        document.getElementById("leaveGameBtn").disabled = false;
-        document.getElementById("startGameBtn").disabled = !isHost;
-      }
-      // Disable the Finish Game and Leave Game buttons
-      function disableGameActions() {
-        document.getElementById("finishGameBtn").disabled = true;
-        document.getElementById("leaveGameBtn").disabled = false;
-        document.getElementById("startGameBtn").disabled = true;
-      }
-      // Game Action Handlers
-      function createGame() {
-        socket.emit("newGame");
-      }
+        // Start a new round
+        document.getElementById('newRoundBtn').addEventListener('click', () => {
+            socket.emit('newRound');
+            socket.on('newRound', (data) => {
+                console.log('New Round Data:', data);
+                logResponse(`New Round Started: ${JSON.stringify(data)}`);
+                memeTemplates = data.memes;
 
-      function joinGame() {
-        const gameCode = document.getElementById("gameCode").value;
-        if (!gameCode) {
-          log("Error: Please enter a game code");
-          return;
-        }
-        socket.emit("joinGame", gameCode);
-      }
+                // Populate the dropdown with templates
+                const templateDropdown = document.getElementById('templateDropdown');
+                templateDropdown.innerHTML = ''; // Clear old options
+                memeTemplates.forEach((template, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${template.name} (${template.lines} lines)`;
+                    templateDropdown.appendChild(option);
+                });
 
-      function finishGame() {
-        socket.emit("finishGame");
-      }
+                // Show the template selection section
+                document.getElementById('templateSelection').style.display = 'block';
+                updateCaptionInputs(); // Generate initial caption inputs
+            });
+        });
 
-      function leaveGame() {
-        socket.emit("leaveGame");
-      }
+        // Update caption inputs based on selected template
+        document.getElementById('templateDropdown').addEventListener('change', updateCaptionInputs);
+        function updateCaptionInputs() {
+            const selectedIndex = document.getElementById('templateDropdown').value;
+            const selectedTemplate = memeTemplates[selectedIndex];
+            const captionInputsDiv = document.getElementById('captionInputs');
 
-      function rejoinGame() {
-        socket.emit("rejoinGame");
-      }
-
-      function startGame() {
-        if (!isHost) {
-          log("Error: Only the host can start the game");
-          return;
-        }
-        socket.emit("startGame");
-      }
-
-      // Function to handle meme submission
-      async function submitMeme() {
-        const chosenTemplate = document.getElementById("chosenTemplate").value;
-        const captionsInput = document.getElementById("captions").value;
-
-        if (!chosenTemplate || !captionsInput) {
-          log("Error: Both Template ID and Captions are required");
-          return;
+            captionInputsDiv.innerHTML = ''; // Clear existing inputs
+            for (let i = 0; i < selectedTemplate.lines; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = `Caption Line ${i + 1}`;
+                input.classList.add('caption-input');
+                captionInputsDiv.appendChild(input);
+            }
         }
 
-        // Prepare captions: check if input includes commas for multiple captions
-        const captions = captionsInput.includes(",")
-          ? captionsInput.split(",").map(c => c.trim())
-          : captionsInput.trim();
+        // Submit a meme
+        document.getElementById('submitMemeBtn').addEventListener('click', async () => {
+            const selectedIndex = document.getElementById('templateDropdown').value;
+            const selectedTemplate = memeTemplates[selectedIndex];
+            const captions = Array.from(document.querySelectorAll('.caption-input')).map(input => input.value.trim());
 
-        try {
-          const response = await fetch("/api/games/submit-memes", {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ chosenTemplate, captions }),
-          });
+            if (captions.some(caption => !caption)) {
+                alert('All caption lines must be filled out!');
+                return;
+            }
 
-          const data = await response.json();
-          if (response.ok) {
-            log(`Meme submitted successfully: ${JSON.stringify(data)}`);
-          } else {
-            log(`Submission failed: ${data.error}`);
-          }
-        } catch (error) {
-          log(`Error submitting meme: ${error.message}`);
-        }
-      }
+            const memeSubmission = {
+                chosenTemplate: selectedTemplate.blank,
+                captions
+            };
+
+            try {
+                const response = await fetch('http://localhost:5000/api/games/submit-memes', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', // Include cookies for authentication
+                    body: JSON.stringify(memeSubmission),
+                });
+                const data = await response.json();
+                console.log('Meme Submitted:', data);
+                logResponse(`Meme Submitted: ${JSON.stringify(data)}`);
+                alert(data.message || 'Meme submitted successfully!');
+                document.getElementById('templateSelection').style.display = 'none'; // Hide the selection after submission
+            } catch (err) {
+                console.error('Error submitting meme:', err);
+                logResponse(`Error submitting meme: ${err.message}`);
+            }
+        });
     </script>
-  </body>
+</body>
 </html>

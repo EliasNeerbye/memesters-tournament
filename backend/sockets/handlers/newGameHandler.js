@@ -38,7 +38,7 @@ const newGameHandler = (io, socket, activeGames) => async () => {
 
         socket.emit('gameCreated', {
             gameId: newGame._id,
-            hostId: player._id,
+            hostInfo: { playerId: player._id, playerName: player.username },
             code: newGame.code
         });
         socket.join(newGame._id.toString());

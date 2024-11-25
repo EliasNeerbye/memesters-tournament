@@ -7,13 +7,16 @@ const leaveGameHandler = (io, socket, activeGames) => async () => {
         const player = await verifyUser(socket);
         if (!player) return;
 
-        const game = await Game.findById(player.currentGame);
+        const game = await Game.findById(player.currentGame)
+            .populate('players.userId', 'username pfp roles')
+            .populate('hostUserId', 'username pfp');
+        
         if (!game) {
             socket.emit('error', { message: 'Game not found!' });
             return;
         }
 
-        const playerIndex = game.players.findIndex(p => p.userId.toString() === player._id.toString());
+        const playerIndex = game.players.findIndex(p => p.userId._id.toString() === player._id.toString());
         if (playerIndex === -1) {
             socket.emit('error', { message: 'Player not in game!' });
             return;
@@ -27,8 +30,33 @@ const leaveGameHandler = (io, socket, activeGames) => async () => {
         } else {
             await game.save();
             await User.updateOne({ _id: player._id }, { $unset: { currentGame: 1 } });
-            socket.emit('leftGame', { gameId: game._id });
-            socket.to(game._id.toString()).emit('playerLeft', { playerId: player._id });
+            
+            socket.emit('leftGame', { 
+                gameId: game._id,
+                updatedPlayers: game.players.map(p => ({
+                    id: p.userId._id,
+                    username: p.userId.username,
+                    pfp: p.userId.pfp
+                })),
+                host: game.hostUserId ? {
+                    id: game.hostUserId._id,
+                    username: game.hostUserId.username,
+                    pfp: game.hostUserId.pfp
+                } : null
+            });
+            
+            socket.to(game._id.toString()).emit('playerLeft', { 
+                playerInfo: { 
+                    playerId: player._id, 
+                    playerName: player.username,
+                    playerPfp: player.pfp 
+                },
+                updatedPlayers: game.players.map(p => ({
+                    id: p.userId._id,
+                    username: p.userId.username,
+                    pfp: p.userId.pfp
+                }))
+            });
         }
 
         socket.leave(game._id.toString());

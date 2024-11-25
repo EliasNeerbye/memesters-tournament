@@ -32,13 +32,13 @@ const finishGameHandler = (io, socket, activeGames) => async () => {
 
         if (activeGames.has(game._id.toString())) {
             const gameData = activeGames.get(game._id.toString());
-            for (const socketId of gameData.sockets) {
-                io.sockets.sockets.get(socketId)?.leave(game._id.toString());
+            for (let i = 0; i < gameData.players.length; i++) {
+                io.sockets.sockets.get(gameData.players[i].socketId)?.leave(game._id.toString());
+                await User.findByIdAndUpdate(gameData.players[i].userId, { $unset: { currentGame: "" } });
             }
             activeGames.delete(game._id.toString());
         }
-
-        socket.emit('gameFinished', { gameId: game._id });
+        z;
     } catch (error) {
         console.error('Finish game error:', error);
         socket.emit('error', { message: 'Internal server error' });

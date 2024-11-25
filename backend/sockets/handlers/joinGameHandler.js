@@ -13,7 +13,10 @@ const joinGameHandler = (io, socket, activeGames) => async (code) => {
             return;
         }
 
-        const game = await Game.findOne({code});
+        const game = await Game.findOne({code})
+            .populate('players.userId', 'username pfp roles')
+            .populate('hostUserId', 'username pfp');
+        
         if(!game){
             socket.emit('error', {message: "Game not found!"});
             return;
@@ -38,9 +41,31 @@ const joinGameHandler = (io, socket, activeGames) => async (code) => {
             activeGames.get(game._id.toString()).sockets.add(socket.id);
         }
 
-        socket.emit('gameJoined', { gameId: game._id, playerId: player._id });
+        socket.emit('gameJoined', { 
+            gameId: game._id, 
+            playerInfo: { 
+                playerId: player._id, 
+                playerName: player.username,
+                playerPfp: player.pfp 
+            },
+            host: {
+                id: game.hostUserId._id,
+                username: game.hostUserId.username,
+                pfp: game.hostUserId.pfp
+            },
+            players: game.players.map(p => ({ 
+                id: p.userId._id, 
+                username: p.userId.username,
+                pfp: p.userId.pfp 
+            }))
+        });
+
         socket.join(game._id.toString());
-        socket.to(game._id.toString()).emit('newPlayerJoined', { playerId: player._id });
+        socket.to(game._id.toString()).emit('newPlayerJoined', { 
+            playerId: player._id,
+            playerName: player.username,
+            playerPfp: player.pfp 
+        });
     } catch (error) {
         console.error('Join game error:', error);
         socket.emit('error', { message: 'Internal server error' });

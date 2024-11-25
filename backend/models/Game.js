@@ -20,7 +20,7 @@ const gameSchema = new mongoose.Schema({
     }],
     currentRound: {
         type: Number,
-        default: 1
+        default: 0
     },
     state: {
         type: String,
@@ -40,6 +40,14 @@ const gameSchema = new mongoose.Schema({
             type: Number,
             default: 0
         }
+    }],
+    settings: [{
+        rounds: {
+            type: Number,
+            required: true,
+            default: 5
+        },
+        // Other settings...?
     }],
     code: {
         type: Number

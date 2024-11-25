@@ -1,48 +1,87 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
+const Round = require("../../models/Round");
+const Game = require("../../models/Game");
+const AuthService = require("../../util/auth");
+require("dotenv").config();
 
-// @route   POST /api/games/initialize
-// @desc    Initialize a new game session
-// @access  Private
-router.post('/initialize', async (req, res) => {
-  // TODO: Implement game initialization
-  // 1. Create game session
-  // 2. Assign players
-  // 3. Set initial game state
-});
+router.put("/submit-memes", async (req, res) => {
+    try {
+        const token = req.cookies.auth_token;
+        const isBlackListed = await AuthService.isTokenBlacklisted(token);
+        if (isBlackListed) {
+            return res.status(401).json({ error: "Token is blacklisted" });
+        }
 
-// @route   PUT /api/games/save-memes
-// @desc    Save memes created during game
-// @access  Private
-router.put('/save-memes', async (req, res) => {
-  // TODO: Implement meme saving
-  // 1. Validate meme data
-  // 2. Associate memes with game session
-});
+        const isUser = await AuthService.jwtValidation(token, process.env.JWT_SECRET);
+        if (!isUser || isUser.length < 1) {
+            return res.status(404).json({ error: "User not found!" });
+        }
 
-// @route   GET /api/games/get-memes
-// @desc    Retrieve memes for a game session
-// @access  Private
-router.get('/get-memes', async (req, res) => {
-  // TODO: Implement meme retrieval
-  // 1. Fetch memes for specific game session
-});
+        const game = await Game.findById(isUser.currentGame);
+        if (!game || game.state !== "playing") {
+            return res.status(403).json({ error: "Game is not available or active" });
+        }
 
-// @route   PUT /api/games/save-scores
-// @desc    Save game scores
-// @access  Private
-router.put('/save-scores', async (req, res) => {
-  // TODO: Implement score saving
-  // 1. Validate score data
-  // 2. Update game and user scores
-});
+        const roundNumber = game.currentRound;
+        const round = await Round.findOne({ gameId: game._id, roundNumber });
+        if (!round || round.status !== "submitting") {
+            return res.status(403).json({ error: "Round is not accepting submissions" });
+        }
 
-// @route   GET /api/games/get-scores
-// @desc    Retrieve game scores
-// @access  Private
-router.get('/get-scores', async (req, res) => {
-  // TODO: Implement score retrieval
-  // 1. Fetch scores for user or game session
+        if (round.endTime && new Date() > new Date(round.endTime)) {
+            return res.status(403).json({ error: "Submission window has closed" });
+        }
+
+        const { chosenTemplate } = req.body;
+        let { captions } = req.body;
+
+        // Parse and validate chosenTemplate
+        const memeTemplates = round.memeTemplates.map((template) => {
+            try {
+                return JSON.parse(template);
+            } catch {
+                return template;
+            }
+        });
+
+        const memeIndex = memeTemplates.indexOf(chosenTemplate);
+        if (memeIndex === -1) {
+            return res.status(400).json({ error: "Invalid meme template chosen" });
+        }
+
+        // Normalize captions
+        if (typeof captions === "string") {
+            captions = [captions.trim()];
+        } else if (Array.isArray(captions)) {
+            captions = captions.map((c) => (typeof c === "string" ? c.trim() : "")).filter((c) => c);
+        } else {
+            return res.status(400).json({ error: "Invalid captions provided" });
+        }
+
+        if (captions.length === 0) {
+            return res.status(400).json({ error: "Captions cannot be empty" });
+        }
+
+        const existingSubmission = round.submissions.find((sub) => sub.userId.toString() === isUser._id);
+        if (existingSubmission) {
+            return res.status(400).json({ error: "User has already submitted a meme for this round" });
+        }
+
+        const newSubmission = {
+            userId: isUser._id,
+            memeIndex,
+            captions,
+        };
+
+        round.submissions.push(newSubmission);
+        await round.save();
+
+        res.status(200).json({ message: "Meme submitted successfully", submission: newSubmission });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal server error" });
+    }
 });
 
 module.exports = router;

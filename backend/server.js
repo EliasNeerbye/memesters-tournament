@@ -14,8 +14,7 @@ const cookieParser = require('cookie-parser');
 
 // Import routes
 const userRoutes = require('./routes/api/userRoutes');
-const gameRoutes = require('./routes/api/gameRoutes');
-const memeRoutes = require('./routes/api/memeRoutes');
+const gameRoutes = require("./routes/api/gameRoutes");
 
 // Initialize Express app
 const app = express();
@@ -90,8 +89,7 @@ app.get('/', (req, res) => {
 
 // API routes
 app.use('/api/users', userRoutes);
-app.use('/api/games', gameRoutes);
-app.use('/api/memes', memeRoutes);
+app.use("/api/games", gameRoutes);
 
 // Serve static files from React frontend
 const reactPath = process.env.NODE_ENV === 'production' ? path.join(__dirname, '../frontend/build') : path.join(__dirname, '../frontend/public');

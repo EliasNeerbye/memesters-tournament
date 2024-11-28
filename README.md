@@ -135,7 +135,6 @@ All endpoints are prefixed with `/api/games/`.
     {
       "message": "Meme submitted successfully",
       "submission": {
-        "userId": string,
         "memeIndex": string,
         "captions": [string]
       }
@@ -178,7 +177,6 @@ All endpoints are prefixed with `/api/games/`.
     {
       gameId: string,
       hostInfo: {
-        playerId: string,
         playerName: string
       },
       code: string
@@ -196,17 +194,14 @@ All endpoints are prefixed with `/api/games/`.
     {
       gameId: string,
       playerInfo: {
-        playerId: string,
         playerName: string,
         playerPfp: string
       },
       host: {
-        id: string,
         username: string,
         pfp: string
       },
       players: Array<{
-        id: string,
         username: string,
         pfp: string
       }>
@@ -223,18 +218,14 @@ All endpoints are prefixed with `/api/games/`.
     ```javascript
     {
       gameId: string,
-      playerId: string,
       gameState: string,
       host: {
-        id: string,
         username: string,
         pfp: string
       },
       players: Array<{
-        id: string,
         username: string,
         pfp: string,
-        socketId: string
       }>
     }
     ```
@@ -250,12 +241,10 @@ All endpoints are prefixed with `/api/games/`.
     {
       gameId: string,
       updatedPlayers: Array<{
-        id: string,
         username: string,
         pfp: string
       }>,
       host: {
-        id: string,
         username: string,
         pfp: string
       }

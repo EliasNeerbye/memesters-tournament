@@ -253,7 +253,7 @@ All endpoints are prefixed with `/api/games/`.
 
 #### Remove User
 - **Emit**: `removeUser`
-  - **Parameters**: `userIdToRemove` (string)
+  - **Parameters**: `usernameToRemove` (string)
   - **Description**: Removes a specific player from the game (host only).
   - **Broadcasts**:
     - `playerRemoved` event to all players in the game room.

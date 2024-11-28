@@ -3,178 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Test</title>
-    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        .section {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin: 5px 0;
-        }
-        input, button, select {
-            margin: 5px 0;
-        }
-    </style>
+    <title>Socket.IO Test</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 </head>
 <body>
-    <h1>Game Testing Interface</h1>
+    <h1>Socket.IO Event Tester</h1>
 
-    <!-- Section for creating and joining games -->
-    <div class="section">
-        <h2>Game Management</h2>
-        <button id="newGameBtn">Create New Game</button>
-        <input type="text" id="gameCode" placeholder="Game Code">
-        <button id="joinGameBtn">Join Game</button>
+    <div>
+        <h2>Connection</h2>
+        <button id="connect">Connect</button>
+        <button id="disconnect" disabled>Disconnect</button>
+        <p id="connection-status">Not connected</p>
     </div>
 
-    <!-- Section for starting a game -->
-    <div class="section">
-        <h2>Start Game</h2>
-        <button id="startGameBtn">Start Game</button>
+    <div>
+        <h2>Emit Events</h2>
+        <button id="emit-newGame" disabled>Emit: newGame</button>
+        <button id="emit-joinGame" disabled>Emit: joinGame</button>
+        <input type="text" id="joinGame-code" placeholder="Game Code">
+        <button id="emit-leaveGame" disabled>Emit: leaveGame</button>
+        <button id="emit-startGame" disabled>Emit: startGame</button>
+        <button id="emit-finishGame" disabled>Emit: finishGame</button>
+        <button id="emit-nextRound" disabled>Emit: nextRound</button>
     </div>
 
-    <!-- Section for testing rounds -->
-    <div class="section">
-        <h2>Rounds</h2>
-        <button id="newRoundBtn">Start New Round</button>
-
-        <div id="templateSelection" style="display:none;">
-            <h3>Select a Template</h3>
-            <select id="templateDropdown"></select>
-            <div id="captionInputs"></div>
-            <button id="submitMemeBtn">Submit Meme</button>
-        </div>
-    </div>
-
-    <div class="section">
-        <h2>Logs</h2>
-        <textarea id="logs" rows="15" cols="80" readonly></textarea>
+    <div>
+        <h2>Socket Responses</h2>
+        <div id="event-log" style="border: 1px solid black; padding: 10px; height: 300px; overflow-y: auto;"></div>
     </div>
 
     <script>
-        const socket = io('http://localhost:5000'); // Backend URL
-        let currentGameCode = '';
-        let memeTemplates = [];
+        let socket;
+        const log = (type, message) => {
+            const logElement = document.getElementById('event-log');
+            const entry = document.createElement('p');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${type}: ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        };
 
-        // Utility function to log responses
-        function logResponse(message) {
-            const logs = document.getElementById('logs');
-            logs.value += `${new Date().toLocaleTimeString()} - ${message}\n`;
-            logs.scrollTop = logs.scrollHeight; // Auto-scroll to bottom
-        }
+        const updateConnectionStatus = (status) => {
+            document.getElementById('connection-status').textContent = status;
+        };
 
-        // Create new game
-        document.getElementById('newGameBtn').addEventListener('click', () => {
+        document.getElementById('connect').addEventListener('click', () => {
+            socket = io('http://10.11.2.13:5000');
+            log('System', 'Connecting...');
+            
+            socket.on('connect', () => {
+                log('System', 'Connected');
+                updateConnectionStatus('Connected');
+                document.getElementById('disconnect').disabled = false;
+                document.getElementById('emit-newGame').disabled = false;
+                document.getElementById('emit-joinGame').disabled = false;
+                document.getElementById('emit-leaveGame').disabled = false;
+                document.getElementById('emit-startGame').disabled = false;
+                document.getElementById('emit-finishGame').disabled = false;
+                document.getElementById('emit-nextRound').disabled = false;
+            });
+
+            socket.on('disconnect', () => {
+                log('System', 'Disconnected');
+                updateConnectionStatus('Disconnected');
+                document.getElementById('disconnect').disabled = true;
+                document.getElementById('emit-newGame').disabled = true;
+                document.getElementById('emit-joinGame').disabled = true;
+                document.getElementById('emit-leaveGame').disabled = true;
+                document.getElementById('emit-startGame').disabled = true;
+                document.getElementById('emit-finishGame').disabled = true;
+                document.getElementById('emit-nextRound').disabled = true;
+            });
+
+            // Log all incoming events
+            socket.onAny((event, ...args) => {
+                log(`Received: ${event}`, JSON.stringify(args));
+            });
+        });
+
+        document.getElementById('disconnect').addEventListener('click', () => {
+            if (socket) {
+                socket.disconnect();
+                log('System', 'Disconnecting...');
+            }
+        });
+
+        // Emit Events
+        document.getElementById('emit-newGame').addEventListener('click', () => {
+            log('Emit', 'newGame');
             socket.emit('newGame');
-            socket.on('gameCreated', (data) => {
-                console.log('Game Created:', data);
-                logResponse(`Game Created: ${JSON.stringify(data)}`);
-                currentGameCode = data.code;
-                alert(`New Game Created. Code: ${currentGameCode}`);
-            });
         });
 
-        // Join a game
-        document.getElementById('joinGameBtn').addEventListener('click', () => {
-            const gameCode = document.getElementById('gameCode').value || currentGameCode;
-            if (!gameCode) return alert('Enter a valid game code!');
-            socket.emit('joinGame', { code: gameCode });
-            socket.on('joinedGame', (data) => {
-                console.log('Joined Game:', data);
-                logResponse(`Joined Game: ${JSON.stringify(data)}`);
-                alert('Successfully joined the game!');
-            });
+        document.getElementById('emit-joinGame').addEventListener('click', () => {
+            const code = document.getElementById('joinGame-code').value;
+            log('Emit', `joinGame with code: ${code}`);
+            socket.emit('joinGame', code);
         });
 
-        // Start game
-        document.getElementById('startGameBtn').addEventListener('click', () => {
+        document.getElementById('emit-leaveGame').addEventListener('click', () => {
+            log('Emit', 'leaveGame');
+            socket.emit('leaveGame');
+        });
+
+        document.getElementById('emit-startGame').addEventListener('click', () => {
+            log('Emit', 'startGame');
             socket.emit('startGame');
-            socket.on('gameStarted', (data) => {
-                console.log('Game Started:', data);
-                logResponse(`Game Started: ${JSON.stringify(data)}`);
-                alert('Game started!');
-            });
         });
 
-        // Start a new round
-        document.getElementById('newRoundBtn').addEventListener('click', () => {
-            socket.emit('newRound');
-            socket.on('newRound', (data) => {
-                console.log('New Round Data:', data);
-                logResponse(`New Round Started: ${JSON.stringify(data)}`);
-                memeTemplates = data.memes;
-
-                // Populate the dropdown with templates
-                const templateDropdown = document.getElementById('templateDropdown');
-                templateDropdown.innerHTML = ''; // Clear old options
-                memeTemplates.forEach((template, index) => {
-                    const option = document.createElement('option');
-                    option.value = index;
-                    option.textContent = `${template.name} (${template.lines} lines)`;
-                    templateDropdown.appendChild(option);
-                });
-
-                // Show the template selection section
-                document.getElementById('templateSelection').style.display = 'block';
-                updateCaptionInputs(); // Generate initial caption inputs
-            });
+        document.getElementById('emit-finishGame').addEventListener('click', () => {
+            log('Emit', 'finishGame');
+            socket.emit('finishGame');
         });
 
-        // Update caption inputs based on selected template
-        document.getElementById('templateDropdown').addEventListener('change', updateCaptionInputs);
-        function updateCaptionInputs() {
-            const selectedIndex = document.getElementById('templateDropdown').value;
-            const selectedTemplate = memeTemplates[selectedIndex];
-            const captionInputsDiv = document.getElementById('captionInputs');
-
-            captionInputsDiv.innerHTML = ''; // Clear existing inputs
-            for (let i = 0; i < selectedTemplate.lines; i++) {
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.placeholder = `Caption Line ${i + 1}`;
-                input.classList.add('caption-input');
-                captionInputsDiv.appendChild(input);
-            }
-        }
-
-        // Submit a meme
-        document.getElementById('submitMemeBtn').addEventListener('click', async () => {
-            const selectedIndex = document.getElementById('templateDropdown').value;
-            const selectedTemplate = memeTemplates[selectedIndex];
-            const captions = Array.from(document.querySelectorAll('.caption-input')).map(input => input.value.trim());
-
-            if (captions.some(caption => !caption)) {
-                alert('All caption lines must be filled out!');
-                return;
-            }
-
-            const memeSubmission = {
-                chosenTemplate: selectedTemplate.blank,
-                captions
-            };
-
-            try {
-                const response = await fetch('http://localhost:5000/api/games/submit-memes', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include', // Include cookies for authentication
-                    body: JSON.stringify(memeSubmission),
-                });
-                const data = await response.json();
-                console.log('Meme Submitted:', data);
-                logResponse(`Meme Submitted: ${JSON.stringify(data)}`);
-                alert(data.message || 'Meme submitted successfully!');
-                document.getElementById('templateSelection').style.display = 'none'; // Hide the selection after submission
-            } catch (err) {
-                console.error('Error submitting meme:', err);
-                logResponse(`Error submitting meme: ${err.message}`);
-            }
+        document.getElementById('emit-nextRound').addEventListener('click', () => {
+            log('Emit', 'nextRound');
+            socket.emit('nextRound');
         });
     </script>
 </body>

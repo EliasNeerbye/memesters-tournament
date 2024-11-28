@@ -47,7 +47,7 @@ const startGameHandler = (io, socket, activeGames) => async () => {
             });
         });
 
-        activeGames.set(game._id.toString(), game);
+        activeGames.set(game._id.toString(), { game, sockets: new Set(game.players.map((p) => p.socketId)) });
     } catch (error) {
         console.error("Error starting game:", error);
         socket.emit("error", { message: "An error occurred while starting the game" });

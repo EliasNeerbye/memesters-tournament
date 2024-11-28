@@ -32,9 +32,9 @@ const finishGameHandler = (io, socket, activeGames) => async () => {
 
         if (activeGames.has(game._id.toString())) {
             const gameData = activeGames.get(game._id.toString());
-            for (let i = 0; i < gameData.players.length; i++) {
-                io.sockets.sockets.get(gameData.players[i].socketId)?.leave(game._id.toString());
-                await User.findByIdAndUpdate(gameData.players[i].userId, { $unset: { currentGame: "" } });
+            for (let i = 0; i < gameData.game.players.length; i++) {
+                io.sockets.sockets.get(gameData.game.players[i].socketId)?.leave(game._id.toString());
+                await User.findByIdAndUpdate(gameData.game.players[i].userId, { $unset: { currentGame: "" } });
             }
             activeGames.delete(game._id.toString());
         }

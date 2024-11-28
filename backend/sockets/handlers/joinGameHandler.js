@@ -41,30 +41,26 @@ const joinGameHandler = (io, socket, activeGames) => async (code) => {
             activeGames.get(game._id.toString()).sockets.add(socket.id);
         }
 
-        socket.emit('gameJoined', { 
-            gameId: game._id, 
-            playerInfo: { 
-                playerId: player._id, 
+        socket.emit("gameJoined", {
+            gameId: game._id,
+            playerInfo: {
                 playerName: player.username,
-                playerPfp: player.pfp 
+                playerPfp: player.pfp,
             },
             host: {
-                id: game.hostUserId._id,
                 username: game.hostUserId.username,
-                pfp: game.hostUserId.pfp
+                pfp: game.hostUserId.pfp,
             },
-            players: game.players.map(p => ({ 
-                id: p.userId._id, 
+            players: game.players.map((p) => ({
                 username: p.userId.username,
-                pfp: p.userId.pfp 
-            }))
+                pfp: p.userId.pfp,
+            })),
         });
 
         socket.join(game._id.toString());
-        socket.to(game._id.toString()).emit('newPlayerJoined', { 
-            playerId: player._id,
+        socket.to(game._id.toString()).emit("newPlayerJoined", {
             playerName: player.username,
-            playerPfp: player.pfp 
+            playerPfp: player.pfp,
         });
     } catch (error) {
         console.error('Join game error:', error);

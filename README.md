@@ -90,8 +90,10 @@ All endpoints are prefixed with `/api/users/`.
 5. Successful responses typically include a `message` field and sometimes additional data.
 -------------------
 
+
 # Game Documentation
--------------------
+---
+
 ## REST Endpoints
 
 All endpoints are prefixed with `/api/games/`.
@@ -102,8 +104,17 @@ All endpoints are prefixed with `/api/games/`.
 - **PUT** `/updateSettings`
   - **Request Body**: `{ rounds, timeLimit }`
   - **Description**: Updates the game settings for a waiting game.
-  - **Requires**: JWT token, must be host
-  - **Returns**: Success message
+  - **Requires**:
+    - JWT token for authentication.
+    - User must be the host of the game.
+  - **Validation**:
+    - Game must be in the "waiting" state.
+  - **Returns**: 
+    ```json
+    {
+      "message": "Updated settings"
+    }
+    ```
 
 ### Game Actions
 
@@ -111,13 +122,46 @@ All endpoints are prefixed with `/api/games/`.
 - **PUT** `/submit-memes`
   - **Request Body**: `{ chosenTemplate, captions }`
   - **Description**: Submits a meme for the current round.
-  - **Requires**: JWT token, active game
+  - **Requires**:
+    - JWT token for authentication.
+    - Player must be part of an active game.
   - **Validation**:
-    - Game must be in "playing" state
-    - Round must be in "submitting" state
-    - Submission window must be open
-    - One submission per user per round
-  - **Returns**: Submission confirmation and details
+    - Game must be in the "playing" state.
+    - Round must be in the "submitting" state.
+    - Submission window must be open.
+    - Each user can only submit one meme per round.
+  - **Returns**: 
+    ```json
+    {
+      "message": "Meme submitted successfully",
+      "submission": {
+        "userId": string,
+        "memeIndex": string,
+        "captions": [string]
+      }
+    }
+    ```
+
+#### Submit Vote
+- **PUT** `/submit-vote`
+  - **Request Body**: `{ submissionsRanked }`
+  - **Description**: Submits a player's vote for the current round.
+  - **Requires**:
+    - JWT token for authentication.
+    - Player must be part of an active game.
+  - **Validation**:
+    - Game must be in the "playing" state.
+    - Round must be in the "judging" state.
+    - Players cannot vote for their own submission.
+    - Submission IDs must be valid for the current round.
+  - **Returns**: 
+    ```json
+    {
+      "message": "Judgment submitted successfully",
+      "remainingJudgements": number,
+      "totalPlayers": number
+    }
+    ```
 
 ## Socket Events
 
@@ -126,8 +170,10 @@ All endpoints are prefixed with `/api/games/`.
 #### Create Game
 - **Emit**: `newGame`
   - **Parameters**: None
-  - **Description**: Creates a new game with the current user as host
-  - **Returns**: 
+  - **Description**: Creates a new game with the current user as the host.
+  - **Broadcasts**:
+    - `gameCreated` event to the emitting client.
+  - **Returns**:
     ```javascript
     {
       gameId: string,
@@ -142,8 +188,10 @@ All endpoints are prefixed with `/api/games/`.
 #### Join Game
 - **Emit**: `joinGame`
   - **Parameters**: `code` (string)
-  - **Description**: Joins an existing game using its code
-  - **Returns**: 
+  - **Description**: Joins an existing game using its code.
+  - **Broadcasts**:
+    - `newPlayerJoined` event to all players in the game room.
+  - **Returns**:
     ```javascript
     {
       gameId: string,
@@ -168,8 +216,10 @@ All endpoints are prefixed with `/api/games/`.
 #### Rejoin Game
 - **Emit**: `rejoinGame`
   - **Parameters**: None
-  - **Description**: Reconnects to a previously joined game
-  - **Returns**: 
+  - **Description**: Reconnects to a previously joined game.
+  - **Broadcasts**:
+    - `playerRejoined` event to all players in the game room.
+  - **Returns**:
     ```javascript
     {
       gameId: string,
@@ -192,8 +242,10 @@ All endpoints are prefixed with `/api/games/`.
 #### Leave Game
 - **Emit**: `leaveGame`
   - **Parameters**: None
-  - **Description**: Leaves the current game
-  - **Returns**: 
+  - **Description**: Leaves the current game.
+  - **Broadcasts**:
+    - `playerLeft` event to all players in the game room.
+  - **Returns**:
     ```javascript
     {
       gameId: string,
@@ -210,61 +262,64 @@ All endpoints are prefixed with `/api/games/`.
     }
     ```
 
+#### Remove User
+- **Emit**: `removeUser`
+  - **Parameters**: `userIdToRemove` (string)
+  - **Description**: Removes a specific player from the game (host only).
+  - **Broadcasts**:
+    - `playerRemoved` event to all players in the game room.
+
 ### Game State Events
 
 #### Start Game
 - **Emit**: `startGame`
   - **Parameters**: None
-  - **Description**: Initiates game start (host only)
-  - **Requirements**:
-    - Must be host
-    - Game must be in "waiting" state
-    - Minimum player count must be met
-  - **Broadcasts**: `gameStarted` event to all players
+  - **Description**: Starts the game (host only).
+  - **Broadcasts**:
+    - `gameStarted` event to all players in the game room.
 
 #### Finish Game
 - **Emit**: `finishGame`
   - **Parameters**: None
-  - **Description**: Ends the current game (host only)
-  - **Requirements**: Must be host
-  - **Broadcasts**: `gameFinished` event to all players
+  - **Description**: Ends the game (host only).
+  - **Broadcasts**:
+    - `gameFinished` event to all players in the game room.
+
+#### Start New Round
+- **Emit**: `nextRound`
+  - **Parameters**: None
+  - **Description**: Starts a new round in the game (host only).
+  - **Broadcasts**:
+    - `roundStarted` event to all players with round details.
 
 ### Event Listeners
 
-#### Game Created
-- **Listen**: `gameCreated`
-  - **Data**: Game creation details including game ID and host information
+#### Player Events
+- **Listen**:
+  - `newPlayerJoined`: New player's information.
+  - `playerRejoined`: Rejoined player's information.
+  - `playerLeft`: Departed player's information and updated player list.
+  - `playerRemoved`: Removed player's information.
 
-#### New Player Joined
-- **Listen**: `newPlayerJoined`
-  - **Data**: New player's information
-
-#### Player Rejoined
-- **Listen**: `playerRejoined`
-  - **Data**: Rejoined player's information
-
-#### Player Left
-- **Listen**: `playerLeft`
-  - **Data**: Departed player's information and updated player list
-
-#### Game Started
-- **Listen**: `gameStarted`
-  - **Data**: Initial game state including players and round information
-
-#### Game Finished
-- **Listen**: `gameFinished`
-  - **Data**: Final game state and results
+#### Game Lifecycle Events
+- **Listen**:
+  - `gameCreated`: Game creation details including game ID and host information.
+  - `gameStarted`: Initial game state including players and round information.
+  - `gameFinished`: Final game state and results.
+  - `roundStarted`: Round details including round number, templates, and time limit.
 
 #### Error Events
-- **Listen**: `error`
-  - **Data**: Error message and details
+- **Listen**:
+  - `error`: Error message and details.
 
 ## Important Notes
 
-1. All socket events require an authenticated user.
-2. Game codes are unique and required for joining games.
-3. Only the host can start or finish a game.
-4. Players can only be in one active game at a time.
-5. Games in "waiting" state with no players are automatically deleted.
-6. Socket connections are managed automatically for game rooms.
--------------------
+1. **Authentication**: All socket events and REST endpoints require a valid JWT token.
+2. **Host Privileges**: Only the host can start or finish games and remove users.
+3. **Game State Management**: Games in "waiting" state with no players are automatically deleted. Active games transition to "finished" if all players leave.
+4. **Round-Specific Rules**:
+    - Memes can only be submitted during the "submitting" state of a round.
+    - Votes can only be submitted during the "judging" state of a round.
+5. **Unique Game Codes**: Game codes are required for joining games.
+
+---

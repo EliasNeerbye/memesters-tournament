@@ -47,30 +47,26 @@ const removeUserHandler = (io, socket, activeGames) => async (userIdToRemove) =>
         }
 
         const removedPlayerInfo = {
-            id: userToRemove.userId._id,
             username: userToRemove.userId.username,
-            pfp: userToRemove.userId.pfp
+            pfp: userToRemove.userId.pfp,
         };
 
-        socket.to(game._id.toString()).emit('playerRemoved', { 
+        socket.to(game._id.toString()).emit("playerRemoved", {
             removedPlayer: removedPlayerInfo,
-            removedBy: { 
-                id: owner._id, 
-                username: owner.username 
+            removedBy: {
+                username: owner.username,
             },
-            updatedPlayers: game.players.map(p => ({
-                id: p.userId._id,
+            updatedPlayers: game.players.map((p) => ({
                 username: p.userId.username,
-                pfp: p.userId.pfp
-            }))
+                pfp: p.userId.pfp,
+            })),
         });
 
-        io.to(userToRemove.socketId).emit('youWereRemoved', {
+        io.to(userToRemove.socketId).emit("youWereRemoved", {
             gameId: game._id,
-            removedBy: { 
-                id: owner._id, 
-                username: owner.username 
-            }
+            removedBy: {
+                username: owner.username,
+            },
         });
 
         const removedSocket = io.sockets.sockets.get(userToRemove.socketId);

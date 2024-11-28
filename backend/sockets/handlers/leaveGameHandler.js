@@ -31,31 +31,29 @@ const leaveGameHandler = (io, socket, activeGames) => async () => {
             await game.save();
             await User.updateOne({ _id: player._id }, { $unset: { currentGame: 1 } });
             
-            socket.emit('leftGame', { 
+            socket.emit("leftGame", {
                 gameId: game._id,
-                updatedPlayers: game.players.map(p => ({
-                    id: p.userId._id,
+                updatedPlayers: game.players.map((p) => ({
                     username: p.userId.username,
-                    pfp: p.userId.pfp
+                    pfp: p.userId.pfp,
                 })),
-                host: game.hostUserId ? {
-                    id: game.hostUserId._id,
-                    username: game.hostUserId.username,
-                    pfp: game.hostUserId.pfp
-                } : null
+                host: game.hostUserId
+                    ? {
+                          username: game.hostUserId.username,
+                          pfp: game.hostUserId.pfp,
+                      }
+                    : null,
             });
             
-            socket.to(game._id.toString()).emit('playerLeft', { 
-                playerInfo: { 
-                    playerId: player._id, 
+            socket.to(game._id.toString()).emit("playerLeft", {
+                playerInfo: {
                     playerName: player.username,
-                    playerPfp: player.pfp 
+                    playerPfp: player.pfp,
                 },
-                updatedPlayers: game.players.map(p => ({
-                    id: p.userId._id,
+                updatedPlayers: game.players.map((p) => ({
                     username: p.userId.username,
-                    pfp: p.userId.pfp
-                }))
+                    pfp: p.userId.pfp,
+                })),
             });
         }
 

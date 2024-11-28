@@ -39,30 +39,25 @@ const rejoinGameHandler = (io, socket, activeGames) => async () => {
             gameData.sockets.add(socket.id);
         }
 
-        socket.emit('gameRejoined', { 
-            gameId: currentGame._id, 
-            playerId: player._id,
+        socket.emit("gameRejoined", {
+            gameId: currentGame._id,
             gameState: currentGame.state,
             host: {
-                id: currentGame.hostUserId._id,
                 username: currentGame.hostUserId.username,
-                pfp: currentGame.hostUserId.pfp
+                pfp: currentGame.hostUserId.pfp,
             },
-            players: currentGame.players.map(p => ({ 
-                id: p.userId._id, 
+            players: currentGame.players.map((p) => ({
                 username: p.userId.username,
                 pfp: p.userId.pfp,
-                socketId: p.socketId 
-            }))
+            })),
         });
 
         socket.join(currentGame._id.toString());
-        socket.to(currentGame._id.toString()).emit('playerRejoined', { 
-            playerInfo: { 
-                playerId: player._id, 
+        socket.to(currentGame._id.toString()).emit("playerRejoined", {
+            playerInfo: {
                 playerName: player.username,
-                playerPfp: player.pfp 
-            } 
+                playerPfp: player.pfp,
+            },
         });
     } catch (error) {
         console.error('Rejoin game error:', error);

@@ -36,10 +36,10 @@ const newGameHandler = (io, socket, activeGames) => async () => {
             activeGames.get(newGame._id.toString()).sockets.add(socket.id);
         }
 
-        socket.emit('gameCreated', {
+        socket.emit("gameCreated", {
             gameId: newGame._id,
-            hostInfo: { playerId: player._id, playerName: player.username },
-            code: newGame.code
+            hostInfo: { playerName: player.username },
+            code: newGame.code,
         });
         socket.join(newGame._id.toString());
     } catch (error) {

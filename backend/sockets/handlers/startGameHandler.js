@@ -38,8 +38,24 @@ const startGameHandler = (io, socket, activeGames) => async () => {
 
         io.to(game.code.toString()).emit("gameStarted", gameState);
 
-        game.players.forEach((player) => {
-            const playerMemes = memeRound.memeTemplates.sort(() => 0.5 - Math.random()).slice(0, 6);
+        game.players.forEach(async (player) => {
+            const memeTemplates = memeRound.memeTemplates;
+
+            // Fisher-Yates shuffle algorithm
+            for (let i = memeTemplates.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [memeTemplates[i], memeTemplates[j]] = [memeTemplates[j], memeTemplates[i]];
+            }
+
+            const playerMemes = memeTemplates.slice(0, 6);
+
+            try {
+                await User.findByIdAndUpdate(player._id, { currentMemes: playerMemes });
+            } catch (error) {
+                console.error("Error updating user memes:", error);
+                // Handle the error appropriately, e.g., throw it or return an error response
+            }
+
             io.to(player.socketId).emit("newRound", {
                 roundNumber: firstRound.roundNumber,
                 memes: playerMemes,

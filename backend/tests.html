@@ -3,120 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Socket.IO Test</title>
-    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <title>Login and Register Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .form-container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .form-container input {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+        }
+        .form-container button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .form-container button:hover {
+            background-color: #3e8e41;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px 5px 0 0;
+            cursor: pointer;
+        }
+        .tab-button.active {
+            background-color: #4CAF50;
+            color: #fff;
+        }
+    </style>
 </head>
 <body>
-    <h1>Socket.IO Event Tester</h1>
-
-    <div>
-        <h2>Connection</h2>
-        <button id="connect">Connect</button>
-        <button id="disconnect" disabled>Disconnect</button>
-        <p id="connection-status">Not connected</p>
+    <div class="tab-buttons">
+        <button class="tab-button active" id="login-tab">Login</button>
+        <button class="tab-button" id="register-tab">Register</button>
     </div>
-
-    <div>
-        <h2>Emit Events</h2>
-        <button id="emit-newGame" disabled>Emit: newGame</button>
-        <button id="emit-joinGame" disabled>Emit: joinGame</button>
-        <input type="text" id="joinGame-code" placeholder="Game Code">
-        <button id="emit-leaveGame" disabled>Emit: leaveGame</button>
-        <button id="emit-startGame" disabled>Emit: startGame</button>
-        <button id="emit-finishGame" disabled>Emit: finishGame</button>
-        <button id="emit-nextRound" disabled>Emit: nextRound</button>
-    </div>
-
-    <div>
-        <h2>Socket Responses</h2>
-        <div id="event-log" style="border: 1px solid black; padding: 10px; height: 300px; overflow-y: auto;"></div>
+    <div class="form-container">
+        <div id="login-form" style="display: block;">
+            <h2>Login</h2>
+            <form id="loginForm">
+                <input type="text" id="emailOrUsername" placeholder="Email or Username">
+                <button type="submit">Send Verification Code</button>
+            </form>
+            <div id="codeForm" style="display: none;">
+                <input type="text" id="code" placeholder="Verification Code">
+                <button type="submit">Login</button>
+            </div>
+            <div id="login-message"></div>
+        </div>
+        <div id="register-form" style="display: none;">
+            <h2>Register</h2>
+            <form id="registerForm">
+                <input type="email" id="register-email" placeholder="Email">
+                <button type="submit">Send Verification Code</button>
+            </form>
+            <div id="register-code-form" style="display: none;">
+                <input type="text" id="register-code" placeholder="Verification Code">
+                <input type="text" id="register-username" placeholder="Username">
+                <button type="submit">Register</button>
+            </div>
+            <div id="register-message"></div>
+        </div>
     </div>
 
     <script>
-        let socket;
-        const log = (type, message) => {
-            const logElement = document.getElementById('event-log');
-            const entry = document.createElement('p');
-            entry.textContent = `[${new Date().toLocaleTimeString()}] ${type}: ${message}`;
-            logElement.appendChild(entry);
-            logElement.scrollTop = logElement.scrollHeight;
-        };
+        const loginTab = document.getElementById('login-tab');
+        const registerTab = document.getElementById('register-tab');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
 
-        const updateConnectionStatus = (status) => {
-            document.getElementById('connection-status').textContent = status;
-        };
-
-        document.getElementById('connect').addEventListener('click', () => {
-            socket = io('http://10.11.2.13:5000');
-            log('System', 'Connecting...');
-            
-            socket.on('connect', () => {
-                log('System', 'Connected');
-                updateConnectionStatus('Connected');
-                document.getElementById('disconnect').disabled = false;
-                document.getElementById('emit-newGame').disabled = false;
-                document.getElementById('emit-joinGame').disabled = false;
-                document.getElementById('emit-leaveGame').disabled = false;
-                document.getElementById('emit-startGame').disabled = false;
-                document.getElementById('emit-finishGame').disabled = false;
-                document.getElementById('emit-nextRound').disabled = false;
-            });
-
-            socket.on('disconnect', () => {
-                log('System', 'Disconnected');
-                updateConnectionStatus('Disconnected');
-                document.getElementById('disconnect').disabled = true;
-                document.getElementById('emit-newGame').disabled = true;
-                document.getElementById('emit-joinGame').disabled = true;
-                document.getElementById('emit-leaveGame').disabled = true;
-                document.getElementById('emit-startGame').disabled = true;
-                document.getElementById('emit-finishGame').disabled = true;
-                document.getElementById('emit-nextRound').disabled = true;
-            });
-
-            // Log all incoming events
-            socket.onAny((event, ...args) => {
-                log(`Received: ${event}`, JSON.stringify(args));
-            });
+        loginTab.addEventListener('click', () => {
+            loginTab.classList.add('active');
+            registerTab.classList.remove('active');
+            loginForm.style.display = 'block';
+            registerForm.style.display = 'none';
         });
 
-        document.getElementById('disconnect').addEventListener('click', () => {
-            if (socket) {
-                socket.disconnect();
-                log('System', 'Disconnecting...');
+        registerTab.addEventListener('click', () => {
+            registerTab.classList.add('active');
+            loginTab.classList.remove('active');
+            registerForm.style.display = 'block';
+            loginForm.style.display = 'none';
+        });
+
+        // Login Form Handling
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const emailOrUsername = document.getElementById('emailOrUsername').value;
+            try {
+                const response = await fetch('/api/users/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ emailOrUsername }),
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('loginForm').style.display = 'none';
+                    document.getElementById('codeForm').style.display = 'block';
+                    document.getElementById('login-message').innerText = data.message;
+                } else {
+                    document.getElementById('login-message').innerText = data.message;
+                }
+            } catch (error) {
+                console.error('Error sending verification code:', error);
+                document.getElementById('login-message').innerText = 'Error sending verification code.';
             }
         });
 
-        // Emit Events
-        document.getElementById('emit-newGame').addEventListener('click', () => {
-            log('Emit', 'newGame');
-            socket.emit('newGame');
+        document.querySelector('#codeForm button').addEventListener('click', async (e) => {
+            e.preventDefault();
+            const emailOrUsername = document.getElementById('emailOrUsername').value;
+            const code = document.getElementById('code').value;
+            try {
+                const response = await fetch('/api/users/login/code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ emailOrUsername, code }),
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('login-message').innerText = data.message;
+                    // Redirect to the next page or handle the login success
+                    window.location.href = '/lobby';
+                } else {
+                    document.getElementById('login-message').innerText = data.message;
+                }
+            } catch (error) {
+                console.error('Error logging in:', error);
+                document.getElementById('login-message').innerText = 'Error logging in.';
+            }
         });
 
-        document.getElementById('emit-joinGame').addEventListener('click', () => {
-            const code = document.getElementById('joinGame-code').value;
-            log('Emit', `joinGame with code: ${code}`);
-            socket.emit('joinGame', code);
+        // Register Form Handling
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('register-email').value;
+            try {
+                const response = await fetch('/api/users/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email }),
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('registerForm').style.display = 'none';
+                    document.getElementById('register-code-form').style.display = 'block';
+                    document.getElementById('register-message').innerText = data.message;
+                } else {
+                    document.getElementById('register-message').innerText = data.message;
+                }
+            } catch (error) {
+                console.error('Error sending verification code for registration:', error);
+                document.getElementById('register-message').innerText = 'Error sending verification code for registration.';
+            }
         });
 
-        document.getElementById('emit-leaveGame').addEventListener('click', () => {
-            log('Emit', 'leaveGame');
-            socket.emit('leaveGame');
-        });
-
-        document.getElementById('emit-startGame').addEventListener('click', () => {
-            log('Emit', 'startGame');
-            socket.emit('startGame');
-        });
-
-        document.getElementById('emit-finishGame').addEventListener('click', () => {
-            log('Emit', 'finishGame');
-            socket.emit('finishGame');
-        });
-
-        document.getElementById('emit-nextRound').addEventListener('click', () => {
-            log('Emit', 'nextRound');
-            socket.emit('nextRound');
+        document.querySelector('#register-code-form button').addEventListener('click', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('register-email').value;
+            const code = document.getElementById('register-code').value;
+            const username = document.getElementById('register-username').value;
+            try {
+                const response = await fetch('/api/users/register/code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, username, code }),
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    document.getElementById('register-message').innerText = data.message;
+                    // Redirect to the next page or handle the registration success
+                    window.location.href = '/lobby';
+                } else {
+                    document.getElementById('register-message').innerText = data.message;
+                }
+            } catch (error) {
+                console.error('Error registering user:', error);
+                document.getElementById('register-message').innerText = 'Error registering user.';
+            }
         });
     </script>
 </body>

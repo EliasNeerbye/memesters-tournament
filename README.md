@@ -229,6 +229,7 @@ All endpoints are prefixed with `/api/games/`.
       }>
     }
     ```
+  - **Note**: If the game is in the "playing" state, additional information about the current round may be included.
 
 #### Leave Game
 - **Emit**: `leaveGame`
@@ -266,6 +267,22 @@ All endpoints are prefixed with `/api/games/`.
   - **Description**: Starts the game (host only).
   - **Broadcasts**:
     - `gameStarted` event to all players in the game room.
+  - **Returns**:
+    ```javascript
+    {
+      gameId: string,
+      players: Array<{
+        username: string,
+        pfp: string
+      }>,
+      currentRound: number,
+      totalRounds: number,
+      leaderboard: Array<{
+        username: string,
+        score: number
+      }>
+    }
+    ```
 
 #### Finish Game
 - **Emit**: `finishGame`
@@ -273,13 +290,52 @@ All endpoints are prefixed with `/api/games/`.
   - **Description**: Ends the game (host only).
   - **Broadcasts**:
     - `gameFinished` event to all players in the game room.
+  - **Returns**:
+    ```javascript
+    {
+      gameId: string,
+      finalState: {
+        leaderboard: Array<{
+          username: string,
+          score: number
+        }>
+      }
+    }
+    ```
 
 #### Start New Round
 - **Emit**: `nextRound`
   - **Parameters**: None
   - **Description**: Starts a new round in the game (host only).
   - **Broadcasts**:
-    - `roundStarted` event to all players with round details.
+    - `newRound` event to all players with round details.
+  - **Returns**:
+    ```json
+    [
+      {
+        "roundNumber": number,
+        "memes": [
+          {
+            "id": string,
+            "name": string,
+            "lines": number,
+            "overlays": number,
+            "styles": [string],
+            "blank": string,
+            "example": {
+              "text": [string],
+              "url": string
+            },
+            "source": string,
+            "keywords": [string],
+            "_self": string
+          },
+          // More meme templates...
+        ],
+        "timeLimit": number
+      }
+    ]
+    ```
 
 ### Event Listeners
 
@@ -295,7 +351,7 @@ All endpoints are prefixed with `/api/games/`.
   - `gameCreated`: Game creation details including game ID and host information.
   - `gameStarted`: Initial game state including players and round information.
   - `gameFinished`: Final game state and results.
-  - `roundStarted`: Round details including round number, templates, and time limit.
+  - `newRound`: Round details including round number, memes, and time limit.
 
 #### Error Events
 - **Listen**:
@@ -310,5 +366,6 @@ All endpoints are prefixed with `/api/games/`.
     - Memes can only be submitted during the "submitting" state of a round.
     - Votes can only be submitted during the "judging" state of a round.
 5. **Unique Game Codes**: Game codes are required for joining games.
+6. **Meme Distribution**: Each player receives a set of randomly shuffled meme templates at the start of each round.
 
 ---

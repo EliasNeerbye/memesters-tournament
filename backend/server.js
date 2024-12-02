@@ -46,27 +46,31 @@ const limiter = rateLimit({
   max: 100 // limit each IP to 100 requests per windowMs
 });
 
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.socket.io"],
-            scriptSrcAttr: ["'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https://api.memegen.link/"],
-            connectSrc: ["'self'", "ws:", "wss:"],
-            upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
+app.use(
+    helmet({
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", "'unsafe-inline'"],
+                scriptSrcAttr: ["'unsafe-inline'"],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+                imgSrc: ["'self'", "data:", "https://api.memegen.link/"],
+                connectSrc: ["'self'", "ws:", "wss:"],
+                upgradeInsecureRequests: process.env.NODE_ENV === "production" ? [] : null,
+            },
         },
-    },
-}));
+    })
+);
 
-app.use(cors({
-    origin: [process.env.FRONTEND_URL || 'http://localhost:3000', 'https://cdn.socket.io'],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    exposedHeaders: ['Set-Cookie']
-}));
+app.use(
+    cors({
+        origin: [process.env.FRONTEND_URL || "http://localhost:3000"],
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+        exposedHeaders: ["Set-Cookie"],
+    })
+);
 
 app.use(compression()); // Compress response bodies
 // app.use(limiter); // Apply rate limiting

@@ -39,6 +39,14 @@ const rejoinGameHandler = (io, socket, activeGames) => async () => {
             gameData.sockets.add(socket.id);
         }
 
+        if ((currentGame.state = "playing")) {
+            return socket.emit("gameRejoined", {
+                gameId: currentGame._id,
+                gameState: currentGame.state,
+                currentMemes: player._id,
+            });
+        }
+
         socket.emit("gameRejoined", {
             gameId: currentGame._id,
             gameState: currentGame.state,

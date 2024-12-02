@@ -7,9 +7,10 @@ import ProfilePage from "./pages/ProfilePage";
 import LobbyPage from "./pages/LobbyPage";
 import NotFound from "./pages/NotFound";
 import Game from "./pages/Game";
-import PlayerList from "./components/PlayerList";
+import PlayerList from './components/PlayerList';
+import JoinGame from "./components/JoinGame";
 
-function App() {
+export function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
@@ -20,6 +21,7 @@ function App() {
       <Route path="*" element={<NotFound />} />
       <Route path="/Game" element={<Game />} />
       <Route path="/playerList" element={<PlayerList />} />
+      <Route path="/JoinGame" element={<JoinGame />} />
     </Routes>
   );
 }

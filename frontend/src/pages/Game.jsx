@@ -1,10 +1,13 @@
-import React from 'react'
+import React from 'react';
 import PlayerList from '../components/PlayerList';
+import JoinGame from '../components/JoinGame';
 
-export const Game = () => {
+const Game = () => {
   return (
     <div>
-      <PlayerList/>
+      <PlayerList />
     </div>
-  )
-}
+  );
+};
+
+export default Game;

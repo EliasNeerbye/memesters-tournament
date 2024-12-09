@@ -15,14 +15,14 @@ class MemeRound {
         this.submissionTimer = null;
         this.judgingTimer = null;
 
-        gameEvents.on("allSubmissionsCompleted", async (data) => {
-            if (data.gameId.toString() == this.gameId.toString()) {
+        this.submissionEventListener = gameEvents.on("allSubmissionsCompleted", async (data) => {
+            if (data.gameId.toString() === this.gameId.toString()) {
                 if (this.submissionTimer) clearTimeout(this.submissionTimer);
-        
+
                 try {
                     const currentGame = await Game.findById(new mongoose.Types.ObjectId(this.gameId));
-                    const currentRound = await Round.findOne({ gameId: this.gameId, roundNumber: currentGame.currentRound});
-                    if (currentRound && currentRound.status == 'submitting') {
+                    const currentRound = await Round.findOne({ gameId: this.gameId, roundNumber: currentGame.currentRound });
+                    if (currentRound && currentRound.status === 'submitting') {
                         await this.handleTimeoutSubmissions(currentRound);
                         await this.endRound();
                     }
@@ -33,21 +33,20 @@ class MemeRound {
             }
         });
 
+        this.judgingEventListener = gameEvents.on("allJudgementsCompleted", async (data) => {
+            if (data.gameId.toString() === this.gameId.toString()) {
+                if (this.judgingTimer) clearTimeout(this.judgingTimer);
 
-        gameEvents.on("allJudgementsCompleted", async (data) => {
-            if (data.gameId.toString() == this.gameId.toString()) {
-                if (this.submissionTimer) clearTimeout(this.submissionTimer);
-        
                 try {
                     const currentGame = await Game.findById(new mongoose.Types.ObjectId(this.gameId));
-                    const currentRound = await Round.findOne({ gameId: this.gameId, roundNumber: currentGame.currentRound});
-                    if (currentRound && currentRound.status == 'judging') {
+                    const currentRound = await Round.findOne({ gameId: this.gameId, roundNumber: currentGame.currentRound });
+                    if (currentRound && currentRound.status === 'judging') {
                         await this.handleTimeoutJudging(currentRound);
                         await this.endJudging();
                     }
                 } catch (error) {
-                    console.error("Error in submission timeout:", error);
-                    this.io.to(this.gameId.toString()).emit("error", { message: "Error processing submissions" });
+                    console.error("Error in judging timeout:", error);
+                    this.io.to(this.gameId.toString()).emit("error", { message: "Error processing judgments" });
                 }
             }
         });
@@ -128,6 +127,10 @@ class MemeRound {
 
         if (!currentRound) throw new Error("Round not found");
 
+        if (currentRound.status !== "submitting"){
+            return;
+        }
+
         currentRound.status = "judging";
         await currentRound.save();
 
@@ -182,6 +185,10 @@ class MemeRound {
 
         if (!currentRound) throw new Error("Round not found");
 
+        if(currentRound.status !== "judging"){
+            return;
+        }
+
         const submissionRankings = new Map();
         currentRound.submissions.forEach((submission) => {
             submissionRankings.set(submission._id.toString(), 0);
@@ -233,6 +240,7 @@ class MemeRound {
             game.state = "finished";
             activeRounds.delete(currentRound._id.toString());
 
+            //Maybe only lb here?
             this.io.to(this.gameId.toString()).emit("gameFinished", {
                 leaderboard: game.leaderboard,
                 roundResults: {

@@ -7,12 +7,10 @@ import ProfilePage from "./pages/ProfilePage";
 import LobbyPage from "./pages/LobbyPage";
 import NotFound from "./pages/NotFound";
 import Game from "./pages/Game";
-import EditMeme from "./components/EditMeme";
-import Voting from "./components/Voting";
-import MemeScores from "./components/MemeScores";
-import ChooseMeme from "./components/ChooseMeme";
+import PlayerList from './components/PlayerList';
+import JoinGame from "./components/JoinGame";
 
-function App() {
+export function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
@@ -22,10 +20,8 @@ function App() {
       <Route path="/lobby" element={<LobbyPage />} />
       <Route path="*" element={<NotFound />} />
       <Route path="/Game" element={<Game />} />
-      <Route path="/editMeme" element={<EditMeme />} />
-      <Route path="/voting" element={<Voting />} />
-      <Route path="/memeScores" element={<MemeScores />} />
-      <Route path="/chooseMeme" element={<ChooseMeme />} />
+      <Route path="/playerList" element={<PlayerList />} />
+      <Route path="/JoinGame" element={<JoinGame />} />
     </Routes>
   );
 }

@@ -295,7 +295,4 @@ All game endpoints are prefixed with `/api/games/`.
 4. Memes can only be submitted during the "submitting" state of a round.
 5. Votes can only be submitted during the "judging" state of a round.
 6. Game codes are required for joining games.
-7. Each player receives a set of randomly shuffled meme templates at the start of each round[1].
-
-Citations:
-[1] https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/39435851/269055f8-2a49-4c48-9192-8942577fd523/paste.txt
+7. Each player receives a set of randomly shuffled meme templates at the start of each round.

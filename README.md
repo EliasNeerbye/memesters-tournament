@@ -1,371 +1,298 @@
-# API Documentation
--------------------
-## User Endpoints
+## API Documentation
 
-All endpoints are prefixed with `/api/users/`.
+### User Endpoints
 
-### Authentication
+All user endpoints are prefixed with `/api/users/`.
 
-#### Register User
+#### Authentication
+
+**Register User**
 - **POST** `/register`
-  - **Request Body**: `{ email }`
-  - **Description**: Initiates user registration by sending a verification code to the provided email.
+- **Request Body**: `{ email }`
+- **Description**: Initiates user registration by sending a verification code to the provided email.
 
-#### Complete Registration
+**Complete Registration**
 - **POST** `/register/code`
-  - **Request Body**: `{ email, username, code }`
-  - **Description**: Completes user registration using the verification code.
-  - **Returns**: JWT token on success.
+- **Request Body**: `{ email, username, code }`
+- **Description**: Completes user registration using the verification code.
+- **Returns**: JWT token on success.
 
-#### Login
+**Login**
 - **POST** `/login`
-  - **Request Body**: `{ emailOrUsername }`
-  - **Description**: Initiates login by sending a verification code to the user's email.
+- **Request Body**: `{ emailOrUsername }`
+- **Description**: Initiates login by sending a verification code to the user's email.
 
-#### Complete Login
+**Complete Login**
 - **POST** `/login/code`
-  - **Request Body**: `{ emailOrUsername, code }`
-  - **Description**: Completes login by verifying the code.
-  - **Returns**: JWT token on success.
+- **Request Body**: `{ emailOrUsername, code }`
+- **Description**: Completes login by verifying the code.
+- **Returns**: JWT token on success.
 
-#### Logout
+**Logout**
 - **GET** `/logout`
-  - **Description**: Invalidates the current JWT token and logs out the user.
+- **Description**: Invalidates the current JWT token and logs out the user.
 
-### User Profile
+#### User Profile
 
-#### Get Profile
+**Get Profile**
 - **GET** `/profile`
-  - **Description**: Retrieves user profile information.
-  - **Requires**: JWT token
+- **Description**: Retrieves user profile information.
+- **Requires**: JWT token
 
-#### Update Username
+**Update Username**
 - **PUT** `/profile/username`
-  - **Request Body**: `{ username }`
-  - **Description**: Updates the user's username.
-  - **Requires**: JWT token
+- **Request Body**: `{ username }`
+- **Description**: Updates the user's username.
+- **Requires**: JWT token
 
-#### Initiate Email Change
+**Initiate Email Change**
 - **POST** `/profile/email`
-  - **Description**: Sends a verification code to the current email.
-  - **Requires**: JWT token
+- **Description**: Sends a verification code to the current email.
+- **Requires**: JWT token
 
-#### Update Email
+**Update Email**
 - **PUT** `/profile/email`
-  - **Request Body**: `{ code, newEmail }`
-  - **Description**: Verifies the code and initiates change to the new email.
-  - **Requires**: JWT token
+- **Request Body**: `{ code, newEmail }`
+- **Description**: Verifies the code and initiates change to the new email.
+- **Requires**: JWT token
 
-#### Confirm New Email
+**Confirm New Email**
 - **POST** `/profile/email/code`
-  - **Request Body**: `{ newCode }`
-  - **Description**: Confirms and updates to the new email.
-  - **Requires**: JWT token
+- **Request Body**: `{ newCode }`
+- **Description**: Confirms and updates to the new email.
+- **Requires**: JWT token
 
-#### Update Profile Picture
+**Update Profile Picture**
 - **PUT** `/profile/pfp`
-  - **Request Body**: Form data with 'pfp' file
-  - **Description**: Updates the user's profile picture.
-  - **Requires**: JWT token
+- **Request Body**: Form data with 'pfp' file
+- **Description**: Updates the user's profile picture.
+- **Requires**: JWT token
 
-### Account Deletion
+#### Account Deletion
 
-#### Initiate Account Deletion
+**Initiate Account Deletion**
 - **DELETE** `/delete-user`
-  - **Description**: Sends a verification code for account deletion.
-  - **Requires**: JWT token
+- **Description**: Sends a verification code for account deletion.
+- **Requires**: JWT token
 
-#### Confirm Account Deletion
+**Confirm Account Deletion**
 - **DELETE** `/delete-user/code`
-  - **Request Body**: `{ code }`
-  - **Description**: Deletes the user account if the code is valid.
-  - **Requires**: JWT token
+- **Request Body**: `{ code }`
+- **Description**: Deletes the user account if the code is valid.
+- **Requires**: JWT token
 
-## Important Notes
+### Game Endpoints
 
-1. All endpoints except registration and login require a valid JWT token.
-2. Include the token in the Authorization header: `Authorization: Bearer <token>`.
-3. Many endpoints use a two-step verification process.
-4. Error responses include a `message` field explaining the error.
-5. Successful responses typically include a `message` field and sometimes additional data.
--------------------
+All game endpoints are prefixed with `/api/games/`.
 
+#### Game Settings
 
-# Game Documentation
----
-
-## REST Endpoints
-
-All endpoints are prefixed with `/api/games/`.
-
-### Game Settings
-
-#### Update Game Settings
+**Update Game Settings**
 - **PUT** `/updateSettings`
-  - **Request Body**: `{ rounds, timeLimit }`
-  - **Description**: Updates the game settings for a waiting game.
-  - **Requires**:
-    - JWT token for authentication.
-    - User must be the host of the game.
-  - **Validation**:
-    - Game must be in the "waiting" state.
-  - **Returns**: 
-    ```json
-    {
-      "message": "Updated settings"
-    }
-    ```
+- **Request Body**: `{ rounds, timeLimit }`
+- **Description**: Updates the game settings for a waiting game.
+- **Requires**: JWT token, user must be the host of the game.
+- **Validation**: Game must be in the "waiting" state.
+- **Returns**: `{ "message": "Updated settings" }`
 
-### Game Actions
+#### Game Actions
 
-#### Submit Memes
+**Submit Memes**
 - **PUT** `/submit-memes`
-  - **Request Body**: `{ chosenTemplate, captions }`
-  - **Description**: Submits a meme for the current round.
-  - **Requires**:
-    - JWT token for authentication.
-    - Player must be part of an active game.
-  - **Validation**:
-    - Game must be in the "playing" state.
-    - Round must be in the "submitting" state.
-    - Submission window must be open.
-    - Each user can only submit one meme per round.
-  - **Returns**: 
-    ```json
-    {
-      "message": "Meme submitted successfully",
-      "submission": {
-        "memeIndex": string,
-        "captions": [string]
-      }
+- **Request Body**: `{ chosenTemplate, captions }`
+- **Description**: Submits a meme for the current round.
+- **Requires**: JWT token, player must be part of an active game.
+- **Validation**:
+  - Game must be in the "playing" state.
+  - Round must be in the "submitting" state.
+  - Submission window must be open.
+  - Each user can only submit one meme per round.
+- **Returns**: 
+  ```json
+  {
+    "message": "Meme submitted successfully",
+    "submission": {
+      "memeIndex": string,
+      "captions": [string]
     }
-    ```
+  }
+  ```
 
-#### Submit Vote
+**Submit Vote**
 - **PUT** `/submit-vote`
-  - **Request Body**: `{ submissionsRanked }`
-  - **Description**: Submits a player's vote for the current round.
-  - **Requires**:
-    - JWT token for authentication.
-    - Player must be part of an active game.
-  - **Validation**:
-    - Game must be in the "playing" state.
-    - Round must be in the "judging" state.
-    - Players cannot vote for their own submission.
-    - Submission IDs must be valid for the current round.
-  - **Returns**: 
-    ```json
-    {
-      "message": "Judgment submitted successfully",
-      "remainingJudgements": number,
-      "totalPlayers": number
-    }
-    ```
+- **Request Body**: `{ submissionsRanked }`
+- **Description**: Submits a player's vote for the current round.
+- **Requires**: JWT token, player must be part of an active game.
+- **Validation**:
+  - Game must be in the "playing" state.
+  - Round must be in the "judging" state.
+  - Players cannot vote for their own submission.
+  - Submission IDs must be valid for the current round.
+- **Returns**:
+  ```json
+  {
+    "message": "Judgment submitted successfully",
+    "remainingJudgements": number,
+    "totalPlayers": number
+  }
+  ```
 
-## Socket Events
+### Socket Events
 
-### Game Management Events
+#### Game Management Events
 
-#### Create Game
+**Create Game**
 - **Emit**: `newGame`
-  - **Parameters**: None
-  - **Description**: Creates a new game with the current user as the host.
-  - **Broadcasts**:
-    - `gameCreated` event to the emitting client.
-  - **Returns**:
-    ```javascript
-    {
-      gameId: string,
-      hostInfo: {
-        playerName: string
-      },
-      code: string
-    }
-    ```
+- **Parameters**: None
+- **Description**: Creates a new game with the current user as the host.
+- **Broadcasts**: `gameCreated` event to the emitting client.
+- **Returns**:
+  ```javascript
+  {
+    gameId: string,
+    hostInfo: { playerName: string },
+    code: string
+  }
+  ```
 
-#### Join Game
+**Join Game**
 - **Emit**: `joinGame`
-  - **Parameters**: `code` (string)
-  - **Description**: Joins an existing game using its code.
-  - **Broadcasts**:
-    - `newPlayerJoined` event to all players in the game room.
-  - **Returns**:
-    ```javascript
-    {
-      gameId: string,
-      playerInfo: {
-        playerName: string,
-        playerPfp: string
-      },
-      host: {
-        username: string,
-        pfp: string
-      },
-      players: Array<{
-        username: string,
-        pfp: string
-      }>
-    }
-    ```
+- **Parameters**: `code` (string)
+- **Description**: Joins an existing game using its code.
+- **Broadcasts**: `newPlayerJoined` event to all players in the game room.
+- **Returns**:
+  ```javascript
+  {
+    gameId: string,
+    playerInfo: { playerName: string, playerPfp: string },
+    host: { username: string, pfp: string },
+    players: Array<{ username: string, pfp: string }>
+  }
+  ```
 
-#### Rejoin Game
+**Rejoin Game**
 - **Emit**: `rejoinGame`
-  - **Parameters**: None
-  - **Description**: Reconnects to a previously joined game.
-  - **Broadcasts**:
-    - `playerRejoined` event to all players in the game room.
-  - **Returns**:
-    ```javascript
-    {
-      gameId: string,
-      gameState: string,
-      host: {
-        username: string,
-        pfp: string
-      },
-      players: Array<{
-        username: string,
-        pfp: string,
-      }>
-    }
-    ```
-  - **Note**: If the game is in the "playing" state, additional information about the current round may be included.
+- **Parameters**: None
+- **Description**: Reconnects to a previously joined game.
+- **Broadcasts**: `playerRejoined` event to all players in the game room.
+- **Returns**:
+  ```javascript
+  {
+    gameId: string,
+    gameState: string,
+    host: { username: string, pfp: string },
+    players: Array<{ username: string, pfp: string }>
+  }
+  ```
 
-#### Leave Game
+**Leave Game**
 - **Emit**: `leaveGame`
-  - **Parameters**: None
-  - **Description**: Leaves the current game.
-  - **Broadcasts**:
-    - `playerLeft` event to all players in the game room.
-  - **Returns**:
-    ```javascript
-    {
-      gameId: string,
-      updatedPlayers: Array<{
-        username: string,
-        pfp: string
-      }>,
-      host: {
-        username: string,
-        pfp: string
-      }
-    }
-    ```
+- **Parameters**: None
+- **Description**: Leaves the current game.
+- **Broadcasts**: `playerLeft` event to all players in the game room.
+- **Returns**:
+  ```javascript
+  {
+    gameId: string,
+    updatedPlayers: Array<{ username: string, pfp: string }>,
+    host: { username: string, pfp: string }
+  }
+  ```
 
-#### Remove User
+**Remove User**
 - **Emit**: `removeUser`
-  - **Parameters**: `usernameToRemove` (string)
-  - **Description**: Removes a specific player from the game (host only).
-  - **Broadcasts**:
-    - `playerRemoved` event to all players in the game room.
+- **Parameters**: `usernameToRemove` (string)
+- **Description**: Removes a specific player from the game (host only).
+- **Broadcasts**: `playerRemoved` event to all players in the game room.
 
-### Game State Events
+#### Game State Events
 
-#### Start Game
+**Start Game**
 - **Emit**: `startGame`
-  - **Parameters**: None
-  - **Description**: Starts the game (host only).
-  - **Broadcasts**:
-    - `gameStarted` event to all players in the game room.
-  - **Returns**:
-    ```javascript
-    {
-      gameId: string,
-      players: Array<{
-        username: string,
-        pfp: string
-      }>,
-      currentRound: number,
-      totalRounds: number,
-      leaderboard: Array<{
-        username: string,
-        score: number
-      }>
-    }
-    ```
+- **Parameters**: None
+- **Description**: Starts the game (host only).
+- **Broadcasts**: `gameStarted` event to all players in the game room.
+- **Returns**:
+  ```javascript
+  {
+    gameId: string,
+    players: Array<{ username: string, pfp: string }>,
+    currentRound: number,
+    totalRounds: number,
+    leaderboard: Array<{ username: string, score: number }>
+  }
+  ```
 
-#### Finish Game
+**Finish Game**
 - **Emit**: `finishGame`
-  - **Parameters**: None
-  - **Description**: Ends the game (host only).
-  - **Broadcasts**:
-    - `gameFinished` event to all players in the game room.
-  - **Returns**:
-    ```javascript
-    {
-      gameId: string,
-      finalState: {
-        leaderboard: Array<{
-          username: string,
-          score: number
-        }>
-      }
+- **Parameters**: None
+- **Description**: Ends the game (host only).
+- **Broadcasts**: `gameFinished` event to all players in the game room.
+- **Returns**:
+  ```javascript
+  {
+    gameId: string,
+    finalState: {
+      leaderboard: Array<{ username: string, score: number }>
     }
-    ```
+  }
+  ```
 
-#### Start New Round
+**Start New Round**
 - **Emit**: `nextRound`
-  - **Parameters**: None
-  - **Description**: Starts a new round in the game (host only).
-  - **Broadcasts**:
-    - `newRound` event to all players with round details.
-  - **Returns**:
-    ```json
-    [
-      {
-        "roundNumber": number,
-        "memes": [
-          {
-            "id": string,
-            "name": string,
-            "lines": number,
-            "overlays": number,
-            "styles": [string],
-            "blank": string,
-            "example": {
-              "text": [string],
-              "url": string
-            },
-            "source": string,
-            "keywords": [string],
-            "_self": string
+- **Parameters**: None
+- **Description**: Starts a new round in the game (host only).
+- **Broadcasts**: `newRound` event to all players with round details.
+- **Returns**:
+  ```json
+  [
+    {
+      "roundNumber": number,
+      "memes": [
+        {
+          "id": string,
+          "name": string,
+          "lines": number,
+          "overlays": number,
+          "styles": [string],
+          "blank": string,
+          "example": {
+            "text": [string],
+            "url": string
           },
-          // More meme templates...
-        ],
-        "timeLimit": number
-      }
-    ]
-    ```
+          "source": string,
+          "keywords": [string],
+          "_self": string
+        }
+      ],
+      "timeLimit": number
+    }
+  ]
+  ```
 
-### Event Listeners
+#### Event Listeners
 
-#### Player Events
-- **Listen**:
-  - `newPlayerJoined`: New player's information.
-  - `playerRejoined`: Rejoined player's information.
-  - `playerLeft`: Departed player's information and updated player list.
-  - `playerRemoved`: Removed player's information.
+**Player Events**
+- `newPlayerJoined`: New player's information.
+- `playerRejoined`: Rejoined player's information.
+- `playerLeft`: Departed player's information and updated player list.
+- `playerRemoved`: Removed player's information.
 
-#### Game Lifecycle Events
-- **Listen**:
-  - `gameCreated`: Game creation details including game ID and host information.
-  - `gameStarted`: Initial game state including players and round information.
-  - `gameFinished`: Final game state and results.
-  - `newRound`: Round details including round number, memes, and time limit.
+**Game Lifecycle Events**
+- `gameCreated`: Game creation details including game ID and host information.
+- `gameStarted`: Initial game state including players and round information.
+- `gameFinished`: Final game state and results.
+- `newRound`: Round details including round number, memes, and time limit.
 
-#### Error Events
-- **Listen**:
-  - `error`: Error message and details.
+**Error Events**
+- `error`: Error message and details.
 
 ## Important Notes
 
-1. **Authentication**: All socket events and REST endpoints require a valid JWT token.
-2. **Host Privileges**: Only the host can start or finish games and remove users.
-3. **Game State Management**: Games in "waiting" state with no players are automatically deleted. Active games transition to "finished" if all players leave.
-4. **Round-Specific Rules**:
-    - Memes can only be submitted during the "submitting" state of a round.
-    - Votes can only be submitted during the "judging" state of a round.
-5. **Unique Game Codes**: Game codes are required for joining games.
-6. **Meme Distribution**: Each player receives a set of randomly shuffled meme templates at the start of each round.
-
----
+1. All socket events and REST endpoints require a valid JWT token for authentication.
+2. Only the host can start or finish games and remove users.
+3. Games in "waiting" state with no players are automatically deleted. Active games transition to "finished" if all players leave.
+4. Memes can only be submitted during the "submitting" state of a round.
+5. Votes can only be submitted during the "judging" state of a round.
+6. Game codes are required for joining games.
+7. Each player receives a set of randomly shuffled meme templates at the start of each round.

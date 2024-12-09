@@ -87,8 +87,6 @@ router.put("/submit-memes", async (req, res) => {
         
         if (round.submissions.length === game.players.length) {
             gameEvents.emit('allSubmissionsCompleted', { gameId: game._id });
-            // Still keep the Socket.IO emit for clients
-            io.to(game._id.toString()).emit("allSubmissionsCompleted", { gameId: game._id });
         }
 
         res.status(200).json({ message: "Meme submitted successfully", submission: newSubmission });
@@ -206,7 +204,6 @@ router.put("/submit-vote", async (req, res) => {
 
         if (remainingJudgements <= 0) {
             gameEvents.emit('allJudgementsCompleted', { gameId: game._id });
-            io.to(game._id.toString()).emit("allJudgementsCompleted", { gameId: game._id });
         }
 
         res.status(200).json({

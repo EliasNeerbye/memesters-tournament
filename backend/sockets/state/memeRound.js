@@ -90,12 +90,6 @@ class MemeRound {
         await newRound.save();
         activeRounds.set(newRound._id.toString(), newRound);
 
-        this.io.to(this.gameId.toString()).emit("roundStarted", {
-            roundNumber: newRound.roundNumber,
-            timeLimit: game.settings.timeLimit,
-            memeTemplates: this.memeTemplates,
-        });
-
         this.submissionTimer = setTimeout(async () => {
             try {
                 const currentRound = await Round.findById(newRound._id);
@@ -265,7 +259,6 @@ class MemeRound {
                     score: this.calculatePositionScore(index, totalPlayers),
                     position: index + 1,
                 })),
-                leaderboard: game.leaderboard,
             });
         }
 

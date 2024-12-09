@@ -1,204 +1,344 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login and Register Page</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            flex-direction: column;
-        }
-        .form-container {
-            border: 1px solid #ccc;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .form-container input {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-        }
-        .form-container button {
-            width: 100%;
-            padding: 10px;
-            background-color: #4CAF50;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .form-container button:hover {
-            background-color: #3e8e41;
-        }
-        .tab-button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px 5px 0 0;
-            cursor: pointer;
-        }
-        .tab-button.active {
-            background-color: #4CAF50;
-            color: #fff;
-        }
-    </style>
+    <title>Game API Test Interface</title>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-    <div class="tab-buttons">
-        <button class="tab-button active" id="login-tab">Login</button>
-        <button class="tab-button" id="register-tab">Register</button>
+    <h1>Game API Test Interface</h1>
+
+    <!-- Connection Controls -->
+    <div>
+        <h2>Connection</h2>
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
     </div>
-    <div class="form-container">
-        <div id="login-form" style="display: block;">
-            <h2>Login</h2>
-            <form id="loginForm">
-                <input type="text" id="emailOrUsername" placeholder="Email or Username">
-                <button type="submit">Send Verification Code</button>
-            </form>
-            <div id="codeForm" style="display: none;">
-                <input type="text" id="code" placeholder="Verification Code">
-                <button type="submit">Login</button>
-            </div>
-            <div id="login-message"></div>
+
+    <!-- Game Controls -->
+    <div>
+        <h2>Game Management</h2>
+        <button onclick="createGame()">Create Game</button>
+        <input type="text" id="gameCode" placeholder="Game Code">
+        <button onclick="joinGame()">Join Game</button>
+        <button onclick="rejoinGame()">Rejoin Game</button>
+        <button onclick="leaveGame()">Leave Game</button>
+        <input type="text" id="userToRemove" placeholder="Username to Remove">
+        <button onclick="removeUser()">Remove User</button>
+    </div>
+
+    <!-- Game Settings -->
+    <div>
+        <h2>Game Settings</h2>
+        <input type="number" id="rounds" placeholder="Number of Rounds">
+        <input type="number" id="timeLimit" placeholder="Time Limit">
+        <button onclick="updateSettings()">Update Settings</button>
+    </div>
+
+    <!-- Game Flow Controls -->
+    <div>
+        <h2>Game Flow</h2>
+        <button onclick="startGame()">Start Game</button>
+        <button onclick="finishGame()">Finish Game</button>
+        <button onclick="startNewRound()">Start New Round</button>
+    </div>
+
+    <!-- Gameplay Actions -->
+    <div>
+        <h2>Gameplay Actions</h2>
+        <select id="memeTemplate" onchange="updateCaptionsInputs()"></select>
+        <div id="captionsContainer"></div>
+        <button onclick="submitMeme()">Submit Meme</button>
+
+        <!-- Voting Container -->
+        <div id="votingContainer" style="display: none;">
+            <h3>Vote Rankings</h3>
+            <div id="submissionsList"></div>
+            <button onclick="submitVote()">Submit Vote</button>
         </div>
-        <div id="register-form" style="display: none;">
-            <h2>Register</h2>
-            <form id="registerForm">
-                <input type="email" id="register-email" placeholder="Email">
-                <button type="submit">Send Verification Code</button>
-            </form>
-            <div id="register-code-form" style="display: none;">
-                <input type="text" id="register-code" placeholder="Verification Code">
-                <input type="text" id="register-username" placeholder="Username">
-                <button type="submit">Register</button>
-            </div>
-            <div id="register-message"></div>
-        </div>
+    </div>
+
+
+    <!-- Event Log -->
+    <div>
+        <h2>Event Log</h2>
+        <button onclick="clearLog()">Clear Log</button>
+        <div id="eventLog" style="height: 300px; overflow-y: scroll; border: 1px solid black; padding: 10px;"></div>
     </div>
 
     <script>
-        const loginTab = document.getElementById('login-tab');
-        const registerTab = document.getElementById('register-tab');
-        const loginForm = document.getElementById('login-form');
-        const registerForm = document.getElementById('register-form');
+        let socket;
+        let currentGameState = {
+            gameId: null,
+            currentRound: null,
+            memeTemplates: [],
+            submissions: []
+        };
 
-        loginTab.addEventListener('click', () => {
-            loginTab.classList.add('active');
-            registerTab.classList.remove('active');
-            loginForm.style.display = 'block';
-            registerForm.style.display = 'none';
-        });
+        // Helper function to log events
+        function logEvent(type, data) {
+            const log = document.getElementById('eventLog');
+            const entry = document.createElement('div');
+            entry.innerHTML = `<strong>${new Date().toISOString()} - ${type}:</strong> ${JSON.stringify(data)}`;
+            log.insertBefore(entry, log.firstChild);
+        }
 
-        registerTab.addEventListener('click', () => {
-            registerTab.classList.add('active');
-            loginTab.classList.remove('active');
-            registerForm.style.display = 'block';
-            loginForm.style.display = 'none';
-        });
+        function clearLog() {
+            document.getElementById('eventLog').innerHTML = '';
+        }
 
-        // Login Form Handling
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const emailOrUsername = document.getElementById('emailOrUsername').value;
+        // Connection management
+        function connect() {
+            socket = io();
+
+            setupSocketListeners();
+            logEvent('Connection', 'Connected to server');
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                logEvent('Connection', 'Disconnected from server');
+            }
+        }
+
+        // Socket event listeners
+        function setupSocketListeners() {
+            // Game management events
+            socket.on('gameCreated', (data) => {
+                currentGameState.gameId = data.gameId;
+                document.getElementById('gameCode').value = data.code;
+                logEvent('gameCreated', data);
+            });
+
+            socket.on('newPlayerJoined', (data) => {
+                logEvent('newPlayerJoined', data);
+            });
+
+            socket.on('playerRejoined', (data) => {
+                logEvent('playerRejoined', data);
+            });
+
+            socket.on('playerLeft', (data) => {
+                logEvent('playerLeft', data);
+            });
+
+            socket.on('playerRemoved', (data) => {
+                logEvent('playerRemoved', data);
+            });
+
+            // Game state events
+            socket.on('gameStarted', (data) => {
+                currentGameState.currentRound = data.currentRound;
+                logEvent('gameStarted', data);
+            });
+
+            socket.on('gameFinished', (data) => {
+                logEvent('gameFinished', data);
+                resetGameState();
+            });
+
+            socket.on('newRound', (data) => {
+                currentGameState.currentRound = data.roundNumber;
+                currentGameState.memeTemplates = data.memes;
+                updateMemeTemplatesDropdown();
+                logEvent('newRound', data);
+            });
+
+            socket.on('error', (error) => {
+                logEvent('Error', error);
+            });
+
+            socket.on('startJudging', (data) => {
+                currentGameState.submissions = data.submissions;
+                const votingContainer = document.getElementById('votingContainer');
+                const submissionsList = document.getElementById('submissionsList');
+
+                submissionsList.innerHTML = '';
+                data.submissions.forEach((submission, index) => {
+                    const submissionDiv = document.createElement('div');
+                    submissionDiv.innerHTML = `
+                        <div>
+                            <strong>Submission ${index + 1}:</strong>
+                            <p>Meme Index: ${submission.memeIndex}</p>
+                            <p>Captions: ${submission.captions.join(', ')}</p>
+                            <input type="number" class="vote-input" placeholder="Rank (1-${data.submissions.length})" 
+                                data-id="${submission.id}">
+                        </div>
+                    `;
+                    submissionsList.appendChild(submissionDiv);
+                });
+
+                votingContainer.style.display = 'block';
+                logEvent('startJudging', data);
+            });
+
+        }
+
+        // Game management functions
+        function createGame() {
+            socket.emit('newGame', (response) => {
+                logEvent('newGame Response', response);
+            });
+        }
+
+        function joinGame() {
+            const code = document.getElementById('gameCode').value;
+            socket.emit('joinGame', code, (response) => {
+                logEvent('joinGame Response', response);
+            });
+        }
+
+        function rejoinGame() {
+            socket.emit('rejoinGame', (response) => {
+                logEvent('rejoinGame Response', response);
+            });
+        }
+
+        function leaveGame() {
+            socket.emit('leaveGame', (response) => {
+                logEvent('leaveGame Response', response);
+                resetGameState();
+            });
+        }
+
+        function removeUser() {
+            const username = document.getElementById('userToRemove').value;
+            socket.emit('removeUser', username, (response) => {
+                logEvent('removeUser Response', response);
+            });
+        }
+
+        // Game settings
+        async function updateSettings() {
+            const rounds = document.getElementById('rounds').value;
+            const timeLimit = document.getElementById('timeLimit').value;
+            
             try {
-                const response = await fetch('/api/users/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ emailOrUsername }),
+                const response = await fetch('/api/games/updateSettings', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ rounds, timeLimit })
                 });
                 const data = await response.json();
-                if (response.ok) {
-                    document.getElementById('loginForm').style.display = 'none';
-                    document.getElementById('codeForm').style.display = 'block';
-                    document.getElementById('login-message').innerText = data.message;
-                } else {
-                    document.getElementById('login-message').innerText = data.message;
-                }
+                logEvent('updateSettings Response', data);
             } catch (error) {
-                console.error('Error sending verification code:', error);
-                document.getElementById('login-message').innerText = 'Error sending verification code.';
+                logEvent('updateSettings Error', error);
             }
-        });
+        }
 
-        document.querySelector('#codeForm button').addEventListener('click', async (e) => {
-            e.preventDefault();
-            const emailOrUsername = document.getElementById('emailOrUsername').value;
-            const code = document.getElementById('code').value;
+        // Game flow functions
+        function startGame() {
+            socket.emit('startGame', (response) => {
+                logEvent('startGame Response', response);
+            });
+        }
+
+        function finishGame() {
+            socket.emit('finishGame', (response) => {
+                logEvent('finishGame Response', response);
+                resetGameState();
+            });
+        }
+
+        function startNewRound() {
+            socket.emit('nextRound', (response) => {
+                logEvent('nextRound Response', response);
+            });
+        }
+
+        // Gameplay functions
+        async function submitMeme() {
+            const template = document.getElementById('memeTemplate').value;
+            const captionsInputs = document.querySelectorAll('#captionsContainer input');
+            const captions = Array.from(captionsInputs).map(input => input.value);
+
             try {
-                const response = await fetch('/api/users/login/code', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ emailOrUsername, code }),
+                const response = await fetch('/api/games/submit-memes', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        chosenTemplate: template,
+                        captions
+                    })
                 });
                 const data = await response.json();
-                if (response.ok) {
-                    document.getElementById('login-message').innerText = data.message;
-                    // Redirect to the next page or handle the login success
-                    window.location.href = '/lobby';
-                } else {
-                    document.getElementById('login-message').innerText = data.message;
-                }
+                logEvent('submitMeme Response', data);
             } catch (error) {
-                console.error('Error logging in:', error);
-                document.getElementById('login-message').innerText = 'Error logging in.';
+                logEvent('submitMeme Error', error);
             }
-        });
+        }
 
-        // Register Form Handling
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('register-email').value;
+        async function submitVote() {
+            const inputs = document.querySelectorAll('.vote-input');
+            const submissionsRanked = Array.from(inputs)
+                .filter(input => input.value)
+                .sort((a, b) => parseInt(a.value) - parseInt(b.value)) // Sort by rank
+                .map(input => input.getAttribute('data-id'));
+
             try {
-                const response = await fetch('/api/users/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email }),
+                const response = await fetch('/api/games/submit-vote', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ submissionsRanked })
                 });
                 const data = await response.json();
-                if (response.ok) {
-                    document.getElementById('registerForm').style.display = 'none';
-                    document.getElementById('register-code-form').style.display = 'block';
-                    document.getElementById('register-message').innerText = data.message;
-                } else {
-                    document.getElementById('register-message').innerText = data.message;
-                }
+                logEvent('submitVote Response', data);
+                alert('Your vote has been submitted!');
             } catch (error) {
-                console.error('Error sending verification code for registration:', error);
-                document.getElementById('register-message').innerText = 'Error sending verification code for registration.';
+                logEvent('submitVote Error', error);
+                alert('Failed to submit your vote.');
             }
-        });
+        }
 
-        document.querySelector('#register-code-form button').addEventListener('click', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('register-email').value;
-            const code = document.getElementById('register-code').value;
-            const username = document.getElementById('register-username').value;
-            try {
-                const response = await fetch('/api/users/register/code', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, username, code }),
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    document.getElementById('register-message').innerText = data.message;
-                    // Redirect to the next page or handle the registration success
-                    window.location.href = '/lobby';
-                } else {
-                    document.getElementById('register-message').innerText = data.message;
+
+        // UI helper functions
+        function updateMemeTemplatesDropdown() {
+            const select = document.getElementById('memeTemplate');
+            select.innerHTML = '';
+            currentGameState.memeTemplates.forEach(meme => {
+                const option = document.createElement('option');
+                option.value = meme.id;
+                option.textContent = meme.name;
+                select.appendChild(option);
+            });
+            updateCaptionsInputs();
+        }
+
+        function updateCaptionsInputs() {
+            const selectedMemeId = document.getElementById('memeTemplate').value;
+            const template = currentGameState.memeTemplates.find(m => m.id === selectedMemeId);
+            const container = document.getElementById('captionsContainer');
+            container.innerHTML = '';
+            
+            if (template) {
+                for (let i = 0; i < template.lines; i++) {
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.placeholder = `Caption ${i + 1}`;
+                    container.appendChild(input);
+                    container.appendChild(document.createElement('br')); // Add line break for better spacing
                 }
-            } catch (error) {
-                console.error('Error registering user:', error);
-                document.getElementById('register-message').innerText = 'Error registering user.';
             }
-        });
+        }
+
+        function resetGameState() {
+            currentGameState = {
+                gameId: null,
+                currentRound: null,
+                memeTemplates: [],
+                submissions: []
+            };
+            document.getElementById('memeTemplate').innerHTML = '';
+            document.getElementById('captionsContainer').innerHTML = '';
+            document.getElementById('submissionsList').innerHTML = '';
+            document.getElementById('votingContainer').style.display = 'none';
+        }
     </script>
 </body>
 </html>

@@ -6,6 +6,8 @@ const Game = require("../../models/Game");
 const AuthService = require("../../util/auth");
 require("dotenv").config();
 
+const gameEvents = require("../../events/gameEvents");
+
 router.put("/submit-memes", async (req, res) => {
     try {
         const token = req.cookies.auth_token;
@@ -39,18 +41,17 @@ router.put("/submit-memes", async (req, res) => {
         const { chosenTemplate } = req.body;
         let { captions } = req.body;
 
-        // Parse memeTemplates correctly
-        let memeTemplates = [];
+        // Parse user's current memes
+        let userMemes = [];
         try {
-            round.memeTemplates.forEach((element) => {
-                memeTemplates.push(element);
-            });
+            userMemes = JSON.parse(user.currentMemes);
         } catch (error) {
-            return res.status(500).json({ error: "Failed to parse meme templates" });
+            return res.status(500).json({ error: "Failed to parse user's current memes" });
         }
 
-        const memeIndex = memeTemplates.findIndex((template) => template.blank === chosenTemplate);
-        if (memeIndex === -1) {
+        const hasMemeWithId = userMemes.some(meme => meme.id === chosenTemplate);
+
+        if (!hasMemeWithId) {
             return res.status(400).json({ error: "Invalid meme template chosen" });
         }
 
@@ -67,27 +68,35 @@ router.put("/submit-memes", async (req, res) => {
             return res.status(400).json({ error: "Captions cannot be empty" });
         }
 
-        const existingSubmission = round.submissions.find((sub) => sub.userId === user._id);
+        const existingSubmission = round.submissions.find((sub) => sub.userId.toString() === user._id.toString());
         if (existingSubmission) {
             return res.status(400).json({ error: "User has already submitted a meme for this round" });
         }
 
         const newSubmission = {
             userId: user._id,
-            memeIndex,
+            memeIndex: userMemes.indexOf(chosenTemplate),
             captions,
         };
 
         round.submissions.push(newSubmission);
 
-        // Save the updated round
         await round.save();
+
+        const io = req.app.get("io");
+        
+        if (round.submissions.length === game.players.length) {
+            gameEvents.emit('allSubmissionsCompleted', { gameId: game._id });
+            // Still keep the Socket.IO emit for clients
+            io.to(game._id.toString()).emit("allSubmissionsCompleted", { gameId: game._id });
+        }
 
         res.status(200).json({ message: "Meme submitted successfully", submission: newSubmission });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Internal server error" });
     }
+
 });
 
 router.put("/updateSettings", async (req, res) => {
@@ -174,13 +183,6 @@ router.put("/submit-vote", async (req, res) => {
             return res.status(400).json({ error: "Invalid submission IDs in judgement" });
         }
 
-        // Verify user hasn't voted for their own submission
-        const userSubmission = round.submissions.find((sub) => sub.userId.toString() === user._id.toString());
-
-        if (userSubmission && submissionsRanked.includes(userSubmission._id.toString())) {
-            return res.status(400).json({ error: "Cannot vote for your own submission" });
-        }
-
         // Check if user has already submitted a judgement
         const existingJudgement = round.judgements.find((judge) => judge.userId.toString() === user._id.toString());
 
@@ -197,9 +199,15 @@ router.put("/submit-vote", async (req, res) => {
 
         await round.save();
 
-        // Calculate how many players still need to submit judgements
-        const playersWhoCanJudge = game.players.length - 1; // Exclude the current player
+        const playersWhoCanJudge = game.players.length - 1;
         const remainingJudgements = playersWhoCanJudge - round.judgements.length;
+
+        const io = req.app.get("io");
+
+        if (remainingJudgements === 0) {
+            gameEvents.emit('allJudgementsCompleted', { gameId: game._id });
+            io.to(game._id.toString()).emit("allJudgementsCompleted", { gameId: game._id });
+        }
 
         res.status(200).json({
             message: "Judgement submitted successfully",

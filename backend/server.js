@@ -12,10 +12,6 @@ const fileUpload = require('express-fileupload');
 const GameSocket = require('./sockets/gameSocket');
 const cookieParser = require('cookie-parser');
 
-// Import routes
-const userRoutes = require('./routes/api/userRoutes');
-const gameRoutes = require("./routes/api/gameRoutes");
-
 // Initialize Express app
 const app = express();
 const server = http.createServer(app);
@@ -90,6 +86,12 @@ app.use(fileUpload({
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'tests.html'));
 })
+
+// Import routes
+const userRoutes = require('./routes/api/userRoutes');
+const gameRoutes = require("./routes/api/gameRoutes");
+
+app.set("io", io);
 
 // API routes
 app.use('/api/users', userRoutes);

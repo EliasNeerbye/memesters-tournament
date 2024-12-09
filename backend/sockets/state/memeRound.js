@@ -2,7 +2,9 @@ const Round = require("../../models/Round");
 const Game = require("../../models/Game");
 const { getRandomMemeTemplates } = require("../../util/memeUtils");
 const { activeRounds } = require("./gameState");
+const mongoose = require("mongoose");
 
+const gameEvents = require('../../events/gameEvents');
 class MemeRound {
     constructor(gameId, players, io) {
         this.gameId = gameId;
@@ -12,6 +14,43 @@ class MemeRound {
         this.memeTemplates = null;
         this.submissionTimer = null;
         this.judgingTimer = null;
+
+        gameEvents.on("allSubmissionsCompleted", async (data) => {
+            if (data.gameId.toString() == this.gameId.toString()) {
+                if (this.submissionTimer) clearTimeout(this.submissionTimer);
+        
+                try {
+                    const currentGame = await Game.findById(new mongoose.Types.ObjectId(this.gameId));
+                    const currentRound = await Round.findOne({ gameId: this.gameId, roundNumber: currentGame.currentRound});
+                    if (currentRound && currentRound.status == 'submitting') {
+                        await this.handleTimeoutSubmissions(currentRound);
+                        await this.endRound();
+                    }
+                } catch (error) {
+                    console.error("Error in submission timeout:", error);
+                    this.io.to(this.gameId.toString()).emit("error", { message: "Error processing submissions" });
+                }
+            }
+        });
+
+
+        gameEvents.on("allJudgementsCompleted", async (data) => {
+            if (data.gameId.toString() == this.gameId.toString()) {
+                if (this.submissionTimer) clearTimeout(this.submissionTimer);
+        
+                try {
+                    const currentGame = await Game.findById(new mongoose.Types.ObjectId(this.gameId));
+                    const currentRound = await Round.findOne({ gameId: this.gameId, roundNumber: currentGame.currentRound});
+                    if (currentRound && currentRound.status == 'judging') {
+                        await this.handleTimeoutJudging(currentRound);
+                        await this.endRound();
+                    }
+                } catch (error) {
+                    console.error("Error in submission timeout:", error);
+                    this.io.to(this.gameId.toString()).emit("error", { message: "Error processing submissions" });
+                }
+            }
+        });
     }
 
     calculatePositionScore(position, totalPlayers) {
@@ -51,7 +90,7 @@ class MemeRound {
         await newRound.save();
         activeRounds.set(newRound._id.toString(), newRound);
 
-        this.io.to(game.code.toString()).emit("roundStarted", {
+        this.io.to(this.gameId.toString()).emit("roundStarted", {
             roundNumber: newRound.roundNumber,
             timeLimit: game.settings.timeLimit,
             memeTemplates: this.memeTemplates,
@@ -104,7 +143,7 @@ class MemeRound {
             captions: submission.captions,
         }));
 
-        this.io.to(game.code.toString()).emit("startJudging", {
+        this.io.to(this.gameId.toString()).emit("startJudging", {
             submissions: anonymizedSubmissions,
             timeLimit: 60000,
         });
@@ -200,7 +239,7 @@ class MemeRound {
             game.state = "finished";
             activeRounds.delete(currentRound._id.toString());
 
-            this.io.to(game.code.toString()).emit("gameFinished", {
+            this.io.to(this.gameId.toString()).emit("gameFinished", {
                 leaderboard: game.leaderboard,
                 roundResults: {
                     submissions: currentRound.submissions.map((sub) => ({
@@ -215,7 +254,7 @@ class MemeRound {
                 },
             });
         } else {
-            this.io.to(game.code.toString()).emit("roundResults", {
+            this.io.to(this.gameId.toString()).emit("roundResults", {
                 roundNumber: this.roundNumber,
                 submissions: currentRound.submissions.map((sub) => ({
                     ...sub.toObject(),

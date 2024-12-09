@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+// Submission schema
 const submissionSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     memeIndex: { type: String, required: true },
@@ -12,11 +13,13 @@ const submissionSchema = new mongoose.Schema({
     },
 });
 
+// Judgement schema
 const judgementSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    submissionsRanked: [{ type: Number, required: true }],
+    submissionsRanked: [{ type: mongoose.Schema.Types.ObjectId, ref: "Submission", required: true }],
 });
 
+// Round schema
 const roundSchema = new mongoose.Schema(
     {
         gameId: { type: mongoose.Schema.Types.ObjectId, ref: "Game", required: true },

@@ -57,7 +57,7 @@ const newRoundHandler = (io, socket, activeGames) => async () => {
             const playerMemes = memeTemplates.slice(0, 6);
 
             try {
-                await User.findByIdAndUpdate(player._id, { currentMemes: playerMemes });
+                await User.findByIdAndUpdate(player.userId, { currentMemes: JSON.stringify(playerMemes) });
             } catch (error) {
                 console.error("Error updating user memes:", error);
                 // Handle the error appropriately, e.g., throw it or return an error response

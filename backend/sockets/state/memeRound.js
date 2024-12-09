@@ -43,7 +43,7 @@ class MemeRound {
                     const currentRound = await Round.findOne({ gameId: this.gameId, roundNumber: currentGame.currentRound});
                     if (currentRound && currentRound.status == 'judging') {
                         await this.handleTimeoutJudging(currentRound);
-                        await this.endRound();
+                        await this.endJudging();
                     }
                 } catch (error) {
                     console.error("Error in submission timeout:", error);

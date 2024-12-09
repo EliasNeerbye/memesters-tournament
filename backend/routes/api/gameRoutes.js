@@ -204,7 +204,7 @@ router.put("/submit-vote", async (req, res) => {
 
         const io = req.app.get("io");
 
-        if (remainingJudgements === 0) {
+        if (remainingJudgements <= 0) {
             gameEvents.emit('allJudgementsCompleted', { gameId: game._id });
             io.to(game._id.toString()).emit("allJudgementsCompleted", { gameId: game._id });
         }

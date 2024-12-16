@@ -52,7 +52,7 @@ app.use(
                 styleSrc: ["'self'", "'unsafe-inline'"],
                 imgSrc: ["'self'", "data:", "https://api.memegen.link/"],
                 connectSrc: ["'self'", "ws:", "wss:"],
-                upgradeInsecureRequests: process.env.NODE_ENV === "production" ? [] : null,
+                upgradeInsecureRequests: process.env.NODE_ENV == "production" ? [] : null,
             },
         },
     })

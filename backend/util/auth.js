@@ -8,7 +8,7 @@ require('dotenv').config();
 
 class AuthService {
     constructor() {
-        if(process.env.APPLICATION_STATE !== "production"){
+        if(process.env.NODE_ENV != "production"){
             this.transporter = nodemailer.createTransport({
                 host: process.env.SMTP_HOST,
                 port: process.env.SMTP_PORT,

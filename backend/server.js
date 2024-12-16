@@ -98,7 +98,7 @@ app.use('/api/users', userRoutes);
 app.use("/api/games", gameRoutes);
 
 // Serve static files from React frontend
-const reactPath = process.env.NODE_ENV === 'production' ? path.join(__dirname, '../frontend/build') : path.join(__dirname, '../frontend/public');
+const reactPath = process.env.NODE_ENV === 'production' ? path.join(__dirname, '../frontend/public') /* Techinacally build here :§ */ : path.join(__dirname, '../frontend/public');
 app.use(express.static(reactPath));
 
 // Catch-all route for SPA
@@ -122,7 +122,7 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
     await connectDB();
     server.listen(PORT, () => {
-        console.log(`Server is running on http://localhost:${PORT}`);
+        console.log(`Server is running on ${process.env.FRONTEND_URL || "http://localhost:"+PORT}`);
         console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
 };

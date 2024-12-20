@@ -102,8 +102,8 @@ const MemeGameApp = () => {
     newSocket.on("roundResults", (data) => {
       setRoundResults(data);
       logEvent("roundResults", `Round ${data.roundNumber} results are in!`);
-    }); 
-    
+    });
+
     newSocket.on("gameFinished", (data) => {
       setLeaderboard(data.leaderboard);
       setRoundResults(data.roundResults);
@@ -593,58 +593,88 @@ const MemeGameApp = () => {
         )}
 
         {/* Results Section */}
-{(roundResults || leaderboard.length > 0) && (
-  <div className="bg-gray-800 p-6 rounded-lg space-y-4">
-    <h2 className="text-2xl font-semibold">
-      {leaderboard.length > 0 ? "Final Results" : "Round Results"}
-    </h2>
-    
-    {/* Submissions Results */}
-    {roundResults && (
-      <div className="space-y-4">
-        <h3 className="text-xl text-purple-400">Round {roundResults.roundNumber} Rankings</h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          {roundResults.submissions.map((submission) => (
-            <div key={submission._id} className="p-4 bg-gray-700 rounded-lg">
-              <div className="flex items-center justify-between">
-                <span className="text-xl font-bold">#{submission.position}</span>
-                <span className="text-green-400">Score: {roundResults.scores.find(s => s.submissionId === submission._id)?.score}</span>
-              </div>
-              <p className="text-gray-300 mt-2">Captions: {submission.captions.join(", ")}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
+        {(roundResults || leaderboard.length > 0) && (
+          <div className="bg-gray-800 p-6 rounded-lg space-y-4">
+            <h2 className="text-2xl font-semibold">
+              {leaderboard.length > 0 ? "Final Results" : "Round Results"}
+            </h2>
 
-    {/* Leaderboard */}
-    {leaderboard.length > 0 && (
-      <div className="mt-6">
-        <h3 className="text-xl text-purple-400 mb-4">Final Leaderboard</h3>
-        <div className="space-y-2">
-          {leaderboard.map((entry, index) => (
-            <div key={entry.userId} 
-              className={`flex justify-between items-center p-3 rounded-lg ${
-                index === 0 ? 'bg-yellow-500/20' : 
-                index === 1 ? 'bg-gray-400/20' : 
-                index === 2 ? 'bg-amber-700/20' : 
-                'bg-gray-700/20'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl">
-                  {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                </span>
-                <span className="font-semibold">{entry.username}</span>
+            {/* Submissions Results */}
+            {roundResults && (
+              <div className="space-y-4">
+                <h3 className="text-xl text-purple-400">
+                  Round {roundResults.roundNumber} Rankings
+                </h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {roundResults.submissions.map((submission) => (
+                    <div
+                      key={submission._id}
+                      className="p-4 bg-gray-700 rounded-lg"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xl font-bold">
+                          #{submission.position}
+                        </span>
+                        <span className="text-green-400">
+                          Score:{" "}
+                          {
+                            roundResults.scores.find(
+                              (s) => s.submissionId === submission._id
+                            )?.score
+                          }
+                        </span>
+                      </div>
+                      <p className="text-gray-300 mt-2">
+                        Captions: {submission.captions.join(", ")}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <span className="text-green-400 font-bold">{entry.score} pts</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
-  </div>
-)}
+            )}
+
+            {/* Leaderboard */}
+            {leaderboard.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-xl text-purple-400 mb-4">
+                  Final Leaderboard
+                </h3>
+                <div className="space-y-2">
+                  {leaderboard.map((entry, index) => (
+                    <div
+                      key={entry.userId}
+                      className={`flex justify-between items-center p-3 rounded-lg ${
+                        index === 0
+                          ? "bg-yellow-500/20"
+                          : index === 1
+                          ? "bg-gray-400/20"
+                          : index === 2
+                          ? "bg-amber-700/20"
+                          : "bg-gray-700/20"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <span className="text-2xl">
+                          {index === 0
+                            ? "🥇"
+                            : index === 1
+                            ? "🥈"
+                            : index === 2
+                            ? "🥉"
+                            : `#${index + 1}`}
+                        </span>
+                        <span className="font-semibold">{entry.username}</span>
+                      </div>
+                      <span className="text-green-400 font-bold">
+                        {entry.score} pts
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Event Log */}
         <div className="bg-gray-800 p-6 rounded-lg space-y-4">

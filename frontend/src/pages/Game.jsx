@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 
 const MemeGameApp = () => {
+  const navigate = useNavigate();
   const [socket, setSocket] = useState(null);
   const [gameState, setGameState] = useState({
     gameId: null,
@@ -18,16 +20,42 @@ const MemeGameApp = () => {
   const [captions, setCaptions] = useState([]);
   const [voteRankings, setVoteRankings] = useState({});
   const [players, setPlayers] = useState([]);
+  const [roundResults, setRoundResults] = useState(null);
+  const [leaderboard, setLeaderboard] = useState([]);
 
   // Helper function to log events
   const logEvent = useCallback((type, data) => {
+    const formatMessage = (type, data) => {
+      switch (type) {
+        case "newPlayerJoined":
+          return `${data.username} joined the game`;
+        case "playerLeft":
+          return `${data.username} left the game`;
+        case "playerRemoved":
+          return `${data.username} was removed from the game`;
+        case "gameStarted":
+          return "Game has started!";
+        case "gameFinished":
+          return "Game finished - Thanks for playing!";
+        case "newRound":
+          return `Round ${data.roundNumber} started`;
+        case "startJudging":
+          return "Time to vote for the best memes!";
+        default:
+          return null; // Don't log other events
+      }
+    };
+
+    const message = formatMessage(type, data);
+    if (!message) return; // Skip if no message
+
     setEventLog((prev) => [
       {
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toLocaleTimeString(),
         type,
-        data: JSON.stringify(data),
+        message,
       },
-      ...prev,
+      ...prev.slice(0, 9), // Keep only last 10 events
     ]);
   }, []);
 
@@ -47,56 +75,23 @@ const MemeGameApp = () => {
     });
 
     // Game management events
-    newSocket.on("gameCreated", (gameData) => {
-      logEvent("gameCreated", gameData);
-      const hostName = gameData.hostInfo?.playerName || "Unknown";
-      setPlayers([{ username: `host: ${hostName}`, pfp: gameData.hostInfo?.pfp }]);
+    newSocket.on("gameCreated", (data) => {
+      setGameState((prev) => ({ ...prev, gameId: data.gameId }));
+      setGameCode(data.code);
+      logEvent("gameCreated", data);
     });
 
-    newSocket.on("playerJoined", (joinedPlayer) => {
-      logEvent("playerJoined", joinedPlayer);
-      setPlayers((prev) => [...prev, joinedPlayer]);
-    });
+    newSocket.on("newPlayerJoined", (data) =>
+      logEvent("newPlayerJoined", data)
+    );
+    newSocket.on("playerRejoined", (data) => logEvent("playerRejoined", data));
+    newSocket.on("playerLeft", (data) => logEvent("playerLeft", data));
+    newSocket.on("playerRemoved", (data) => logEvent("playerRemoved", data));
 
-    newSocket.on("playerRejoined", (data) => {
-      let updatedPlayers = data.players || [];
-      if (
-        data.host &&
-        data.host.username &&
-        !updatedPlayers.some((p) => p.username === data.host.username)
-      ) {
-        updatedPlayers = [data.host, ...updatedPlayers];
-      }
-      setPlayers(updatedPlayers);
-      logEvent("playerRejoined", data);
-    });
-
-    newSocket.on("playerLeft", (data) => {
-      if (data?.updatedPlayers) {
-        setPlayers(data.updatedPlayers);
-      }
-      logEvent("playerLeft", data);
-    });
-
-    newSocket.on("playerRemoved", (data) => {
-      if (data?.updatedPlayers) {
-        setPlayers(data.updatedPlayers);
-      }
-      logEvent("playerRemoved", data);
-    });
-
-    newSocket.on("gameJoined", (data) => {
-      let updatedPlayers = data.players || [];
-      if (
-        data.host &&
-        data.host.username &&
-        !updatedPlayers.some((p) => p.username === data.host.username)
-      ) {
-        updatedPlayers = [data.host, ...updatedPlayers];
-      }
-      setPlayers(updatedPlayers);
-      logEvent("gameJoined", data);
-    });
+    const updatePlayerList = (newPlayers) => {
+      setPlayers(newPlayers);
+      logEvent("updatePlayerList", { players: newPlayers });
+    };
 
     // Game state events
     newSocket.on("gameStarted", (data) => {
@@ -104,22 +99,32 @@ const MemeGameApp = () => {
       logEvent("gameStarted", data);
     });
 
+    newSocket.on("roundResults", (data) => {
+      setRoundResults(data);
+      logEvent("roundResults", `Round ${data.roundNumber} results are in!`);
+    }); 
+    
     newSocket.on("gameFinished", (data) => {
-      logEvent("gameFinished", data);
-      resetGameState();
+      setLeaderboard(data.leaderboard);
+      setRoundResults(data.roundResults);
+      logEvent("gameFinished", "Game finished - Thanks for playing!");
     });
 
     newSocket.on("newRound", (data) => {
       setGameState((prev) => ({
         ...prev,
-        currentRound: data.roundNumber,
+        currentRound: { ...data, status: "submitting" },
         memeTemplates: data.memes,
       }));
       logEvent("newRound", data);
     });
 
     newSocket.on("startJudging", (data) => {
-      setGameState((prev) => ({ ...prev, submissions: data.submissions }));
+      setGameState((prev) => ({
+        ...prev,
+        currentRound: { ...prev.currentRound, status: "judging" },
+        submissions: data.submissions,
+      }));
       logEvent("startJudging", data);
     });
 
@@ -130,6 +135,41 @@ const MemeGameApp = () => {
     const socket = setupSocket();
     return () => socket.close();
   }, [setupSocket]);
+
+  // Fetch meme templates from the server
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      try {
+        const response = await fetch("/api/meme-templates");
+        const data = await response.json();
+        setGameState((prev) => ({ ...prev, memeTemplates: data }));
+      } catch (error) {
+        console.error("Error fetching meme templates:", error);
+      }
+    };
+
+    fetchTemplates();
+  }, []);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/users/profile", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          navigate("/login");
+        }
+      } catch (error) {
+        console.error("Error checking auth status:", error);
+        navigate("/login");
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
 
   // Reset game state
   const resetGameState = () => {
@@ -143,6 +183,8 @@ const MemeGameApp = () => {
     setSelectedTemplate("");
     setCaptions([]);
     setVoteRankings({});
+    setRoundResults(null);
+    setLeaderboard([]);
   };
 
   // Game management functions
@@ -152,9 +194,6 @@ const MemeGameApp = () => {
     logEvent("newGame", "Creating new game");
     socket.emit("newGame", (response) => {
       logEvent("newGame Response", response);
-      if (response?.gameCode) {
-        setGameCode(response.gameCode);
-      }
     });
   };
 
@@ -226,6 +265,10 @@ const MemeGameApp = () => {
 
   const handleSubmitMeme = async () => {
     logEvent("buttonClick", "Submit Meme button clicked");
+    if (gameState.currentRound.status !== "submitting") {
+      logEvent("submitMeme Error", "Game is not in submitting state");
+      return;
+    }
     try {
       const response = await fetch("/api/games/submit-memes", {
         method: "PUT",
@@ -243,70 +286,119 @@ const MemeGameApp = () => {
   };
 
   const handleSubmitVote = async () => {
-    logEvent("buttonClick", "Submit Votes button clicked");
+    console.log("buttonClick", "Submit Votes button clicked");
+
+    if (gameState.currentRound.status !== "judging") {
+      console.log("submitVote Error", "Game is not in judging state");
+      return;
+    }
+
+    // Validate that all submissions have unique rankings
+    const rankingsArray = Object.values(voteRankings);
+    const uniqueRankings = new Set(rankingsArray);
+    if (rankingsArray.length !== uniqueRankings.size) {
+      console.log(
+        "submitVote Error",
+        "Each submission must have a unique ranking"
+      );
+      return;
+    }
+
+    // Validate that all submissions are ranked
+    if (rankingsArray.length !== gameState.submissions.length) {
+      console.log("submitVote Error", "All submissions must be ranked");
+      return;
+    }
+
+    // Sort by ranking value and get submission IDs in ranked order
     const submissionsRanked = Object.entries(voteRankings)
-      .sort(([, a], [, b]) => a - b)
+      .sort(([, a], [, b]) => Number(a) - Number(b))
       .map(([id]) => id);
 
     try {
       const response = await fetch("/api/games/submit-vote", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ submissionsRanked }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          submissionsRanked,
+        }),
+        credentials: "include", // Add this to ensure cookies are sent
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.log("submitVote Error", error.error || "Failed to submit vote");
+        return;
+      }
+
       const data = await response.json();
-      logEvent("submitVote Response", data);
+      console.log("submitVote Response", data);
+
+      // Clear rankings after successful submission
+      setVoteRankings({});
     } catch (error) {
-      logEvent("submitVote Error", error);
+      console.log("submitVote Error", error.message);
+    }
+  };
+
+  const getEventIcon = (type) => {
+    switch (type) {
+      case "newPlayerJoined":
+        return "👋";
+      case "playerLeft":
+      case "playerRemoved":
+        return "🚪";
+      case "gameStarted":
+        return "🎮";
+      case "gameFinished":
+        return "🏆";
+      case "newRound":
+        return "🔄";
+      case "startJudging":
+        return "⭐";
+      default:
+        return "📢";
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 p-6">
+    <div className="min-h-screen bg-gray-900 text-white p-6 space-y-8">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600">
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
             Meme Game
           </h1>
-          <p className="text-gray-600 mt-2">Create, Share, Vote, Win!</p>
+          <p className="text-gray-400">Create, Share, Vote, Win!</p>
         </div>
 
         {/* Connection Status Bar */}
-        <div className="bg-white rounded-xl shadow-lg p-6 transform transition-all duration-300 hover:shadow-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+        <div className="bg-gray-800 p-4 rounded-lg">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-2">
               <div
                 className={`w-3 h-3 rounded-full ${
                   isConnected ? "bg-green-500" : "bg-red-500"
-                } animate-pulse`}
+                }`}
               ></div>
-              <span className="font-medium text-gray-700">
+              <span className="text-sm">
                 {isConnected ? "Connected" : "Disconnected"}
               </span>
             </div>
-            <div className="flex space-x-4">
+            <div className="space-x-2">
               <button
-                className={`px-6 py-2 rounded-lg font-medium transition-all duration-300 transform hover:scale-105
-                  ${
-                    isConnected
-                      ? "bg-gray-200 text-gray-500"
-                      : "bg-indigo-600 text-white hover:bg-indigo-700"
-                  }`}
                 onClick={() => !isConnected && setupSocket()}
                 disabled={isConnected}
+                className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors duration-300 disabled:opacity-50"
               >
                 Connect
               </button>
               <button
-                className={`px-6 py-2 rounded-lg font-medium transition-all duration-300 transform hover:scale-105
-                  ${
-                    !isConnected
-                      ? "bg-gray-200 text-gray-500"
-                      : "bg-red-600 text-white hover:bg-red-700"
-                  }`}
                 onClick={() => socket?.close()}
                 disabled={!isConnected}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors duration-300 disabled:opacity-50"
               >
                 Disconnect
               </button>
@@ -315,172 +407,85 @@ const MemeGameApp = () => {
         </div>
 
         {/* Game Management Section */}
-        <div className="bg-white rounded-xl shadow-lg p-6 transform transition-all duration-300 hover:shadow-xl">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-            Game Management
-          </h2>
-          <div className="space-y-6">
-            <div className="flex flex-wrap gap-4">
+        <div className="bg-gray-800 p-6 rounded-lg space-y-4">
+          <h2 className="text-2xl font-semibold">Game Management</h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <button
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg
-                  transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
                 onClick={handleCreateGame}
+                className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
               >
                 Create Game
               </button>
-              <div className="flex-1 min-w-[200px] relative">
+              <div className="flex space-x-2">
                 <input
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 
-      focus:border-transparent transition-all duration-300"
                   value={gameCode}
                   onChange={(e) => setGameCode(e.target.value)}
                   placeholder="Enter Game Code"
+                  className="flex-1 px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
                 <button
-                  className="absolute right-2 top-2 px-3 py-1 bg-indigo-600 text-white rounded-lg
-      transform transition-all duration-300 hover:scale-105 hover:bg-indigo-700"
                   onClick={() => {
                     navigator.clipboard.writeText(gameCode);
                     logEvent("buttonClick", "Copy Game Code button clicked");
                   }}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors duration-300"
                 >
                   Copy
                 </button>
               </div>
               <button
-                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg
-                  transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
                 onClick={handleJoinGame}
+                className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
               >
                 Join Game
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-4">
+            <div className="space-y-4">
               <button
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg
-                  transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                onClick={handleRejoinGame}
-              >
-                Rejoin Game
-              </button>
-              <button
-                className="px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-lg
-                  transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
                 onClick={handleLeaveGame}
+                className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors duration-300"
               >
                 Leave Game
               </button>
-            </div>
-
-            <div className="flex flex-wrap gap-4">
-              <input
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 
-                  focus:border-transparent transition-all duration-300"
-                value={userToRemove}
-                onChange={(e) => setUserToRemove(e.target.value)}
-                placeholder="Username to Remove"
-              />
-              <button
-                className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg
-                  transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                onClick={handleRemoveUser}
-              >
-                Remove User
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6 transform transition-all duration-300 hover:shadow-xl">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-            Player List ({players.length})
-          </h2>
-          {players.length > 0 ? (
-            <ul className="space-y-2">
-              {players.map((player, index) => (
-                <li
-                  key={index}
-                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg transition-all duration-300 hover:bg-gray-100"
+              <div className="flex space-x-2">
+                <input
+                  value={userToRemove}
+                  onChange={(e) => setUserToRemove(e.target.value)}
+                  placeholder="Username to Remove"
+                  className="flex-1 px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <button
+                  onClick={handleRemoveUser}
+                  className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors duration-300"
                 >
-                  {player.pfp && (
-                    <img
-                      src={player.pfp}
-                      alt={player.username}
-                      className="w-8 h-8 rounded-full"
-                    />
-                  )}
-                  <span className="font-medium text-gray-700">
-                    {player.username}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-500 text-center">No players have joined yet</p>
-          )}
-        </div>
-
-        {/* Game Settings */}
-        <div className="bg-white rounded-xl shadow-lg p-6 transform transition-all duration-300 hover:shadow-xl">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-            Game Settings
-          </h2>
-          <div className="flex flex-wrap gap-4">
-            <input
-              type="number"
-              className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 
-                focus:border-transparent transition-all duration-300"
-              value={settings.rounds}
-              onChange={(e) =>
-                setSettings((prev) => ({ ...prev, rounds: e.target.value }))
-              }
-              placeholder="Number of Rounds"
-            />
-            <input
-              type="number"
-              className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 
-                focus:border-transparent transition-all duration-300"
-              value={settings.timeLimit}
-              onChange={(e) =>
-                setSettings((prev) => ({ ...prev, timeLimit: e.target.value }))
-              }
-              placeholder="Time Limit (seconds)"
-            />
-            <button
-              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg
-                transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
-              onClick={handleUpdateSettings}
-            >
-              Update Settings
-            </button>
+                  Remove User
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Game Flow Controls */}
-        <div className="bg-white rounded-xl shadow-lg p-6 transform transition-all duration-300 hover:shadow-xl">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-            Game Flow
-          </h2>
-          <div className="flex flex-wrap gap-4">
+        <div className="bg-gray-800 p-6 rounded-lg space-y-4">
+          <h2 className="text-2xl font-semibold">Game Flow</h2>
+          <div className="flex space-x-4">
             <button
-              className="flex-1 px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg
-                transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
               onClick={handleStartGame}
+              className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors duration-300"
             >
               Start Game
             </button>
             <button
-              className="flex-1 px-6 py-4 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg
-                transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
               onClick={handleFinishGame}
+              className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors duration-300"
             >
               End Game
             </button>
             <button
-              className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg
-                transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
               onClick={handleStartNewRound}
+              className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors duration-300"
             >
               Next Round
             </button>
@@ -488,16 +493,13 @@ const MemeGameApp = () => {
         </div>
 
         {/* Gameplay Section */}
-        <div className="bg-white rounded-xl shadow-lg p-6 transform transition-all duration-300 hover:shadow-xl">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-            Create Your Meme
-          </h2>
-          <div className="space-y-6">
+        <div className="bg-gray-800 p-6 rounded-lg space-y-4">
+          <h2 className="text-2xl font-semibold">Create Your Meme</h2>
+          <div className="space-y-4">
             <select
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 
-                focus:border-transparent transition-all duration-300 appearance-none bg-white"
               value={selectedTemplate}
               onChange={(e) => setSelectedTemplate(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="" disabled>
                 Select Meme Template
@@ -510,31 +512,37 @@ const MemeGameApp = () => {
             </select>
 
             {selectedTemplate && (
-              <div className="space-y-4 animate-fadeIn">
-                {gameState.memeTemplates.find((t) => t.id === selectedTemplate)
-                  ?.lines > 0 &&
-                  Array.from({
-                    length: gameState.memeTemplates.find(
+              <div className="space-y-4">
+                <img
+                  src={
+                    gameState.memeTemplates.find(
                       (t) => t.id === selectedTemplate
-                    ).lines,
-                  }).map((_, index) => (
-                    <input
-                      key={index}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 
-                        focus:border-transparent transition-all duration-300"
-                      value={captions[index] || ""}
-                      onChange={(e) => {
-                        const newCaptions = [...captions];
-                        newCaptions[index] = e.target.value;
-                        setCaptions(newCaptions);
-                      }}
-                      placeholder={`Caption ${index + 1}`}
-                    />
-                  ))}
+                    )?.imageUrl
+                  }
+                  alt="Selected Meme Template"
+                  className="max-w-md mx-auto rounded-lg"
+                />
+                {Array.from({
+                  length:
+                    gameState.memeTemplates.find(
+                      (t) => t.id === selectedTemplate
+                    )?.lines || 2,
+                }).map((_, index) => (
+                  <input
+                    key={index}
+                    value={captions[index] || ""}
+                    onChange={(e) => {
+                      const newCaptions = [...captions];
+                      newCaptions[index] = e.target.value;
+                      setCaptions(newCaptions);
+                    }}
+                    placeholder={`Caption ${index + 1}`}
+                    className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                ))}
                 <button
-                  className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg
-                    transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
                   onClick={handleSubmitMeme}
+                  className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
                 >
                   Submit Meme
                 </button>
@@ -545,29 +553,23 @@ const MemeGameApp = () => {
 
         {/* Voting Section */}
         {gameState.submissions.length > 0 && (
-          <div className="bg-white rounded-xl shadow-lg p-6 transform transition-all duration-300 hover:shadow-xl">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-              Vote for Memes
-            </h2>
-            <div className="space-y-6">
+          <div className="bg-gray-800 p-6 rounded-lg space-y-4">
+            <h2 className="text-2xl font-semibold">Vote for Memes</h2>
+            <div className="grid md:grid-cols-2 gap-4">
               {gameState.submissions.map((submission, index) => (
                 <div
                   key={submission.id}
-                  className="p-4 border border-gray-100 rounded-lg hover:border-purple-200 transition-all duration-300"
+                  className="p-4 bg-gray-700 rounded-lg space-y-2"
                 >
-                  <p className="font-medium text-gray-700">
-                    Submission {index + 1}
-                  </p>
-                  <p className="text-gray-600">Meme: {submission.memeIndex}</p>
-                  <p className="text-gray-600 mb-3">
+                  <p className="font-semibold">Submission {index + 1}</p>
+                  <p className="text-gray-400">Meme: {submission.memeIndex}</p>
+                  <p className="text-gray-400">
                     Captions: {submission.captions.join(", ")}
                   </p>
                   <input
                     type="number"
                     min="1"
                     max={gameState.submissions.length}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 
-                      focus:border-transparent transition-all duration-300"
                     value={voteRankings[submission.id] || ""}
                     onChange={(e) =>
                       setVoteRankings((prev) => ({
@@ -576,13 +578,13 @@ const MemeGameApp = () => {
                       }))
                     }
                     placeholder={`Rank (1-${gameState.submissions.length})`}
+                    className="w-full px-4 py-2 bg-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
               ))}
               <button
-                className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg
-                  transform transition-all duration-300 hover:scale-105 hover:shadow-lg"
                 onClick={handleSubmitVote}
+                className="col-span-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
               >
                 Submit Votes
               </button>
@@ -590,30 +592,79 @@ const MemeGameApp = () => {
           </div>
         )}
 
-        {/* Event Log */}
-        <div className="bg-white rounded-xl shadow-lg p-6 transform transition-all duration-300 hover:shadow-xl">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-gray-800">Event Log</h2>
-            <button
-              className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 
-                transition-all duration-300"
-              onClick={() => setEventLog([])}
+        {/* Results Section */}
+{(roundResults || leaderboard.length > 0) && (
+  <div className="bg-gray-800 p-6 rounded-lg space-y-4">
+    <h2 className="text-2xl font-semibold">
+      {leaderboard.length > 0 ? "Final Results" : "Round Results"}
+    </h2>
+    
+    {/* Submissions Results */}
+    {roundResults && (
+      <div className="space-y-4">
+        <h3 className="text-xl text-purple-400">Round {roundResults.roundNumber} Rankings</h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          {roundResults.submissions.map((submission) => (
+            <div key={submission._id} className="p-4 bg-gray-700 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-xl font-bold">#{submission.position}</span>
+                <span className="text-green-400">Score: {roundResults.scores.find(s => s.submissionId === submission._id)?.score}</span>
+              </div>
+              <p className="text-gray-300 mt-2">Captions: {submission.captions.join(", ")}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* Leaderboard */}
+    {leaderboard.length > 0 && (
+      <div className="mt-6">
+        <h3 className="text-xl text-purple-400 mb-4">Final Leaderboard</h3>
+        <div className="space-y-2">
+          {leaderboard.map((entry, index) => (
+            <div key={entry.userId} 
+              className={`flex justify-between items-center p-3 rounded-lg ${
+                index === 0 ? 'bg-yellow-500/20' : 
+                index === 1 ? 'bg-gray-400/20' : 
+                index === 2 ? 'bg-amber-700/20' : 
+                'bg-gray-700/20'
+              }`}
             >
-              Clear Log
-            </button>
-          </div>
-          <div className="h-64 overflow-y-auto rounded-lg border border-gray-100 p-4 space-y-2">
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">
+                  {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                </span>
+                <span className="font-semibold">{entry.username}</span>
+              </div>
+              <span className="text-green-400 font-bold">{entry.score} pts</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
+        {/* Event Log */}
+        <div className="bg-gray-800 p-6 rounded-lg space-y-4">
+          <h2 className="text-2xl font-semibold">Game Feed</h2>
+          <div className="max-h-40 overflow-y-auto space-y-2">
             {eventLog.map((event, index) => (
               <div
                 key={index}
-                className="p-3 bg-gray-50 rounded-lg transition-all duration-300 hover:bg-gray-100"
+                className="flex items-center space-x-3 p-2 bg-gray-700/50 rounded-lg text-sm animate-fade-in"
               >
-                <span className="font-medium text-gray-700">
-                  {event.timestamp} - {event.type}:
-                </span>
-                <span className="ml-2 text-gray-600">{event.data}</span>
+                <span className="text-xl">{getEventIcon(event.type)}</span>
+                <span className="text-gray-400 text-xs">{event.timestamp}</span>
+                <span className="text-gray-100">{event.message}</span>
               </div>
             ))}
+            {eventLog.length === 0 && (
+              <div className="text-center text-gray-500 p-4">
+                Game events will appear here
+              </div>
+            )}
           </div>
         </div>
       </div>

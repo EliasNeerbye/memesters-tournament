@@ -1,96 +1,144 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 
 export default function LandingPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
+
   useEffect(() => {
     checkAuthStatus();
   }, []);
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch('/api/users/profile', {
-        method: 'GET',
-        credentials: 'include',
+      const response = await fetch("/api/users/profile", {
+        method: "GET",
+        credentials: "include",
       });
-      
+
       setIsAuthenticated(response.ok);
     } catch (error) {
-      console.error('Error checking auth status:', error);
+      console.error("Error checking auth status:", error);
       setIsAuthenticated(false);
     }
   };
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/users/logout', {
-        method: 'GET',
-        credentials: 'include', // Important for cookies
+      const response = await fetch("/api/users/logout", {
+        method: "GET",
+        credentials: "include", // Important for cookies
       });
 
       if (response.ok) {
         setIsAuthenticated(false);
       } else {
-        console.error('Logout failed');
+        console.error("Logout failed");
       }
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error("Error during logout:", error);
     }
   };
 
   return (
     <div>
-      <nav>
-        <ul className="flex justify-between items-center m-5">
-          <li>
-            <img
-              className="rounded-full"
-              src="https://placehold.co/50"
-              alt="Profile picture"
-            />
-          </li>
-          <li>
-            <h1 className="text-2xl">Memesters</h1>
-          </li>
-          <li>
-            {isAuthenticated ? (
-              <button 
-                onClick={handleLogout}
-                className="bg-secondaryColor text-black drop-shadow-2xl rounded-md pl-4 pr-4 py-1"
-              >
-                Logout
-              </button>
-            ) : (
-              <a href="/login">
-                <button className="bg-secondaryColor text-black drop-shadow-2xl rounded-md pl-4 pr-4 py-1">
-                  Login
-                </button>
-              </a>
-            )}
-          </li>
-        </ul>
-      </nav>
-      <main>
-        <div className="flex flex-col justify-center items-center text-center mt-20 mx-20">
-          <h1 className="text-lg font-bold">The Memesters' tournament</h1>
-          <p className="text-xs mt-4">
-            Compete in making the best meme! Chat with your friends!
-          </p>
-        </div>
-        <div className="flex flex-col justify-center items-center text-center mt-20">
-          <form className="flex flex-col justify-center w-1/2" action="">
-            <input
-              className="text-center rounded-lg bg-secondaryColor p-4 pl-6 pr-6 mt-5 text-white placeholder-white"
-              type="text"
-              placeholder="party code..."
-            />
-            <div className="flex flex-col justify-center items-center w-full mt-5">
-              <button className="flex justify-center w-1/3">Join</button>
-              <button className="flex justify-center w-1/3">Make lobby</button>
-            </div>
-          </form>
-        </div>
-      </main>
+            <div className="min-h-screen bg-gray-900 text-white">
+            <nav className="border-b border-gray-800">
+              <ul className="flex items-center justify-between px-6 py-4">
+                <li>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">Memesters</h1>
+                </li>
+                <li>
+                  {isAuthenticated ? (
+                    <button onClick={handleLogout} 
+                      className="px-6 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors duration-300">
+                      Logout
+                    </button>
+                  ) : (
+                    <a href="/login">
+                      <button className="px-6 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300">
+                        Login
+                      </button>
+                    </a>
+                  )}
+                </li>
+              </ul>
+            </nav>
+            <main className="flex items-center justify-center min-h-[calc(100vh-80px)]">
+              <div className="text-center space-y-8">
+                <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                  The Memesters' Tournament
+                </h1>
+                <p className="text-xl text-gray-400">
+                  Compete in making the best meme! Chat with your friends!
+                </p>
+                <div className="mt-8">
+                  {isAuthenticated ? (
+                    <button 
+                      onClick={() => (window.location.href = "/game")}
+                      className="px-8 py-3 bg-green-500 hover:bg-green-600 rounded-lg text-lg font-semibold transition-all duration-300 hover:scale-105"
+                    >
+                      Go to Game
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => (window.location.href = "/login")}
+                      className="px-8 py-3 bg-purple-500 hover:bg-purple-600 rounded-lg text-lg font-semibold transition-all duration-300 hover:scale-105"
+                    >
+                      Log in
+                    </button>
+                  )}
+                </div>
+              </div>
+            </main>
+          </div><div className="min-h-screen bg-gray-900 text-white">
+            <nav className="border-b border-gray-800">
+              <ul className="flex items-center justify-between px-6 py-4">
+                <li>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">Memesters</h1>
+                </li>
+                <li>
+                  {isAuthenticated ? (
+                    <button onClick={handleLogout} 
+                      className="px-6 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors duration-300">
+                      Logout
+                    </button>
+                  ) : (
+                    <a href="/login">
+                      <button className="px-6 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300">
+                        Login
+                      </button>
+                    </a>
+                  )}
+                </li>
+              </ul>
+            </nav>
+            <main className="flex items-center justify-center min-h-[calc(100vh-80px)]">
+              <div className="text-center space-y-8">
+                <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                  The Memesters' Tournament
+                </h1>
+                <p className="text-xl text-gray-400">
+                  Compete in making the best meme! Chat with your friends!
+                </p>
+                <div className="mt-8">
+                  {isAuthenticated ? (
+                    <button 
+                      onClick={() => (window.location.href = "/game")}
+                      className="px-8 py-3 bg-green-500 hover:bg-green-600 rounded-lg text-lg font-semibold transition-all duration-300 hover:scale-105"
+                    >
+                      Go to Game
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => (window.location.href = "/login")}
+                      className="px-8 py-3 bg-purple-500 hover:bg-purple-600 rounded-lg text-lg font-semibold transition-all duration-300 hover:scale-105"
+                    >
+                      Log in
+                    </button>
+                  )}
+                </div>
+              </div>
+            </main>
+          </div>
     </div>
   );
 }

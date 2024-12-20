@@ -197,7 +197,7 @@ router.put("/submit-vote", async (req, res) => {
 
         await round.save();
 
-        const playersWhoCanJudge = game.players.length - 1;
+        const playersWhoCanJudge = game.players.length;
         const remainingJudgements = playersWhoCanJudge - round.judgements.length;
 
         const io = req.app.get("io");

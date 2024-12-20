@@ -70,56 +70,69 @@ export default function LoginUser() {
   
 
   return (
-    <div className="flex flex-col justify-center items-center mt-40">
-      <h1>Login</h1>
-      {!isCodeSent ? (
-        <form className="flex justify-center items-center flex-col w-full" onSubmit={handleRequestCode}>
-          <input
-            className="text-center rounded-lg bg-secondaryColor p-4 pl-6 pr-6 mt-5 text-white placeholder-white"
-            type="text"
-            name="emailOrUsername"
-            id="loginEmailOrUsername"
-            placeholder="Email or Username"
-            value={emailOrUsername}
-            onChange={(e) => setEmailOrUsername(e.target.value)}
-            required
-          />
-          <button
-            className="bg-secondaryColor text-white rounded-lg p-4 mt-5 text-center w-[200px]"
-            type="submit"
-            disabled={loading}
-          >
-            {loading ? 'Sending...' : 'Send Code'}
-          </button>
-        </form>
-      ) : (
-        <form className="flex justify-center items-center flex-col w-full" onSubmit={handleVerifyCode}>
-          <input
-            className="text-center rounded-lg bg-secondaryColor p-4 pl-6 pr-6 mt-5 text-white placeholder-white"
-            type="text"
-            name="verificationCode"
-            id="verificationCode"
-            placeholder="Enter Verification Code"
-            value={verificationCode}
-            onChange={(e) => setVerificationCode(e.target.value)}
-            required
-          />
-          <button
-            className="bg-secondaryColor text-white rounded-lg p-4 mt-5 text-center w-[200px]"
-            type="submit"
-            disabled={loading}
-          >
-            {loading ? 'Verifying...' : 'Verify Code'}
-          </button>
-        </form>
-      )}
-      {errorMessage && <p className="text-red-500 mt-4">{errorMessage}</p>}
-      <p className="text-center text-xs mt-10">
-        Don't have an account?{" "}
-        <a className="text-white underline" href="/CreateUser">
-          Register here
-        </a>
-      </p>
+    <div className="min-h-screen bg-gray-900 text-white p-6">
+      <div className="max-w-md mx-auto space-y-8 pt-20">
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+            Login
+          </h1>
+          <p className="text-gray-400">Enter your credentials to continue</p>
+        </div>
+
+        <div className="bg-gray-800 p-6 rounded-lg shadow-xl">
+          {!isCodeSent ? (
+            <form className="space-y-6" onSubmit={handleRequestCode}>
+              <input
+                className="w-full px-4 py-3 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                type="text"
+                name="emailOrUsername"
+                id="loginEmailOrUsername"
+                placeholder="Email or Username"
+                value={emailOrUsername}
+                onChange={(e) => setEmailOrUsername(e.target.value)}
+                required
+              />
+              <button
+                className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-semibold hover:opacity-90 transition-all duration-300 disabled:opacity-50"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? 'Sending...' : 'Send Code'}
+              </button>
+            </form>
+          ) : (
+            <form className="space-y-6" onSubmit={handleVerifyCode}>
+              <input
+                className="w-full px-4 py-3 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300"
+                type="text"
+                name="verificationCode"
+                id="verificationCode"
+                placeholder="Enter Verification Code"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                required
+              />
+              <button
+                className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-semibold hover:opacity-90 transition-all duration-300 disabled:opacity-50"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? 'Verifying...' : 'Verify Code'}
+              </button>
+            </form>
+          )}
+          {errorMessage && (
+            <p className="mt-4 text-red-400 text-sm text-center">{errorMessage}</p>
+          )}
+        </div>
+
+        <p className="text-center text-gray-400">
+          Don't have an account?{" "}
+          <a href="/CreateUser" className="text-purple-400 hover:text-purple-300 transition-colors duration-300">
+            Register here
+          </a>
+        </p>
+      </div>
     </div>
   );
 }

@@ -56,7 +56,7 @@ export default function LoginUser() {
       const data = await response.json();
   
       if (response.ok) {
-        navigate('/profile'); // Redirect to profile page after successful login
+        navigate('/game'); // Redirect to profile page after successful login
       } else {
         setErrorMessage(data.message || 'Invalid verification code.');
       }

@@ -62,7 +62,7 @@ export default function CreateUser() {
 
       if (response.ok) {
         // Set JWT token in a cookie
-        navigate('/profile'); // Redirect to profile page after successful registration
+        navigate('/game'); // Redirect to profile page after successful registration
       } else {
         setErrorMessage(data.message || 'Registration failed.');
       }

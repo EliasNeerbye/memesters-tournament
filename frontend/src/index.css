@@ -2,34 +2,3 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@font-face {
-  font-family: PlaypenSans;
-    src: url(./fonts/Playpen_Sans/PlaypenSans-VariableFont_wght.ttf);
-}
-
-
-
-@layer components {
-  body {
-    @apply
-    font-playpen 
-    bg-primaryColor
-    text-white
-    transition-all ease-in-out duration-300;
-  }
-  
-  input, button {
-    @apply
-    bg-secondaryColor
-    text-white
-    rounded-lg
-    p-4
-    pl-6
-    pr-6
-    mt-5
-    placeholder-white
-    transition-all ease-in-out duration-300
-    hover:scale-110;
-  }
-}

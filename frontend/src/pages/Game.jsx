@@ -22,6 +22,7 @@ const MemeGameApp = () => {
   const [players, setPlayers] = useState([]);
   const [roundResults, setRoundResults] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [showFAQ, setShowFAQ] = useState(false);
 
   // Helper function to log events
   const logEvent = useCallback((type, data) => {
@@ -188,7 +189,6 @@ const MemeGameApp = () => {
   };
 
   // Game management functions
-  // ...existing code...
   const handleCreateGame = () => {
     logEvent("buttonClick", "Create Game button clicked");
     logEvent("newGame", "Creating new game");
@@ -286,10 +286,7 @@ const MemeGameApp = () => {
   };
 
   const handleSubmitVote = async () => {
-    console.log("buttonClick", "Submit Votes button clicked");
-
     if (gameState.currentRound.status !== "judging") {
-      console.log("submitVote Error", "Game is not in judging state");
       return;
     }
 
@@ -297,16 +294,11 @@ const MemeGameApp = () => {
     const rankingsArray = Object.values(voteRankings);
     const uniqueRankings = new Set(rankingsArray);
     if (rankingsArray.length !== uniqueRankings.size) {
-      console.log(
-        "submitVote Error",
-        "Each submission must have a unique ranking"
-      );
       return;
     }
 
     // Validate that all submissions are ranked
     if (rankingsArray.length !== gameState.submissions.length) {
-      console.log("submitVote Error", "All submissions must be ranked");
       return;
     }
 
@@ -334,7 +326,6 @@ const MemeGameApp = () => {
       }
 
       const data = await response.json();
-      console.log("submitVote Response", data);
 
       // Clear rankings after successful submission
       setVoteRankings({});
@@ -496,20 +487,30 @@ const MemeGameApp = () => {
         <div className="bg-gray-800 p-6 rounded-lg space-y-4">
           <h2 className="text-2xl font-semibold">Create Your Meme</h2>
           <div className="space-y-4">
-            <select
-              value={selectedTemplate}
-              onChange={(e) => setSelectedTemplate(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="" disabled>
-                Select Meme Template
-              </option>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {gameState.memeTemplates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.name}
-                </option>
+                <div
+                  key={template.id}
+                  onClick={() => setSelectedTemplate(template.id)}
+                  className={`relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 ${
+                    selectedTemplate === template.id
+                      ? "ring-4 ring-purple-500 scale-105"
+                      : "hover:ring-2 hover:ring-purple-400 hover:scale-105"
+                  }`}
+                >
+                  <img
+                    src={template.imageUrl}
+                    alt={template.name}
+                    className="w-full h-40 object-cover"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
+                    <p className="text-sm text-white text-center truncate">
+                      {template.name}
+                    </p>
+                  </div>
+                </div>
               ))}
-            </select>
+            </div>
 
             {selectedTemplate && (
               <div className="space-y-4">
@@ -697,6 +698,67 @@ const MemeGameApp = () => {
             )}
           </div>
         </div>
+      </div>
+      <div className="fixed bottom-4 right-4">
+        <button
+          onClick={() => setShowFAQ(true)}
+          className="bg-gray-800/80 hover:bg-gray-700/80 text-white rounded-full p-3 shadow-lg transition-all duration-300 hover:scale-110"
+          title="Help & FAQ"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        </button>
+
+        {showFAQ && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-gray-800 rounded-lg p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-purple-400">
+                  Help & FAQ
+                </h2>
+                <button
+                  onClick={() => setShowFAQ(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div className="space-y-4">
+                <p className="text-gray-300">
+                  <strong>Common Issues</strong>
+                  <br />
+                  <p>If you are unable to join or create a game try pressing leave and then join or create</p>
+                  <p></p>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

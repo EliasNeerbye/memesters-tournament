@@ -7,7 +7,7 @@ const { Server } = require('socket.io');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+require('dotenv').config({ path: path.resolve(__dirname, './.env') })
 const fileUpload = require('express-fileupload');
 const GameSocket = require('./sockets/gameSocket');
 const cookieParser = require('cookie-parser');

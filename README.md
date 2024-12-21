@@ -107,12 +107,14 @@ All game endpoints are prefixed with `/api/games/`.
   - Round must be in the "submitting" state.
   - Submission window must be open.
   - Each user can only submit one meme per round.
+  - Chosen template must exist in user's current memes.
 - **Returns**: 
   ```json
   {
     "message": "Meme submitted successfully",
     "submission": {
-      "memeIndex": string,
+      "userId": string,
+      "memeIndex": number,
       "captions": [string]
     }
   }
@@ -268,6 +270,78 @@ All game endpoints are prefixed with `/api/games/`.
       "timeLimit": number
     }
   ]
+  ```
+
+  **Start Judging**
+- **Listen**: `startJudging`
+- **Description**: Received when all submissions are in and judging phase begins
+- **Returns**:
+  ```javascript
+  {
+    submissions: [
+      {
+        id: string,
+        memeUrl: string,
+        captions: [string]
+      }
+    ],
+    timeLimit: number
+  }
+  ```
+
+**Round Results**
+- **Listen**: `roundResults`
+- **Description**: Received when judging phase ends
+- **Returns**:
+  ```javascript
+  {
+    roundNumber: number,
+    submissions: [
+      {
+        id: string,
+        memeUrl: string,
+        captions: [string]
+      }
+    ],
+    scores: [
+      {
+        submissionId: string,
+        score: number,
+        position: number
+      }
+    ]
+  }
+  ```
+
+**Game Finished**
+- **Listen**: `gameFinished`
+- **Description**: Received when the final round ends
+- **Returns**:
+  ```javascript
+  {
+    leaderboard: [
+      {
+        userId: string,
+        score: number
+      }
+    ],
+    roundResults: {
+      submissions: [
+        {
+          id: string,
+          memeUrl: string,
+          captions: [string]
+        }
+      ],
+      scores: [
+        {
+          submissionId: string,
+          score: number,
+          position: number
+        }
+      ]
+    }
+  }
   ```
 
 #### Event Listeners

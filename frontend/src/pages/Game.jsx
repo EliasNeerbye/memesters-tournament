@@ -286,10 +286,8 @@ const MemeGameApp = () => {
   };
 
   const handleSubmitVote = async () => {
-    console.log("buttonClick", "Submit Votes button clicked");
 
     if (gameState.currentRound.status !== "judging") {
-      console.log("submitVote Error", "Game is not in judging state");
       return;
     }
 
@@ -297,16 +295,11 @@ const MemeGameApp = () => {
     const rankingsArray = Object.values(voteRankings);
     const uniqueRankings = new Set(rankingsArray);
     if (rankingsArray.length !== uniqueRankings.size) {
-      console.log(
-        "submitVote Error",
-        "Each submission must have a unique ranking"
-      );
       return;
     }
 
     // Validate that all submissions are ranked
     if (rankingsArray.length !== gameState.submissions.length) {
-      console.log("submitVote Error", "All submissions must be ranked");
       return;
     }
 
@@ -334,7 +327,6 @@ const MemeGameApp = () => {
       }
 
       const data = await response.json();
-      console.log("submitVote Response", data);
 
       // Clear rankings after successful submission
       setVoteRankings({});
@@ -496,20 +488,30 @@ const MemeGameApp = () => {
         <div className="bg-gray-800 p-6 rounded-lg space-y-4">
           <h2 className="text-2xl font-semibold">Create Your Meme</h2>
           <div className="space-y-4">
-            <select
-              value={selectedTemplate}
-              onChange={(e) => setSelectedTemplate(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="" disabled>
-                Select Meme Template
-              </option>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {gameState.memeTemplates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.name}
-                </option>
+                <div
+                  key={template.id}
+                  onClick={() => setSelectedTemplate(template.id)}
+                  className={`relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 ${
+                    selectedTemplate === template.id 
+                      ? 'ring-4 ring-purple-500 scale-105' 
+                      : 'hover:ring-2 hover:ring-purple-400 hover:scale-105'
+                  }`}
+                >
+                  <img
+                    src={template.imageUrl}
+                    alt={template.name}
+                    className="w-full h-40 object-cover"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
+                    <p className="text-sm text-white text-center truncate">
+                      {template.name}
+                    </p>
+                  </div>
+                </div>
               ))}
-            </select>
+            </div>
 
             {selectedTemplate && (
               <div className="space-y-4">

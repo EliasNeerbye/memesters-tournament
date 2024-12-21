@@ -75,7 +75,7 @@ router.put("/submit-memes", async (req, res) => {
 
         const newSubmission = {
             userId: user._id,
-            memeIndex: userMemes.indexOf(chosenTemplate),
+            memeIndex: userMemes.findIndex(meme => meme.id === chosenTemplate),
             captions,
         };
 

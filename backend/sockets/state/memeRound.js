@@ -1,5 +1,6 @@
 const Round = require("../../models/Round");
 const Game = require("../../models/Game");
+const User = require("../../models/User");
 const { getRandomMemeTemplates } = require("../../util/memeUtils");
 const { activeRounds } = require("./gameState");
 const mongoose = require("mongoose");
@@ -119,32 +120,38 @@ class MemeRound {
     async endRound() {
         const game = await Game.findById(this.gameId);
         if (!game) throw new Error("Game not found");
-
+    
         const currentRound = await Round.findOne({
             gameId: this.gameId,
             roundNumber: this.roundNumber,
         });
-
+    
         if (!currentRound) throw new Error("Round not found");
-
-        if (currentRound.status !== "submitting"){
+    
+        if (currentRound.status !== "submitting") {
             return;
         }
-
+    
         currentRound.status = "judging";
         await currentRound.save();
-
-        const anonymizedSubmissions = currentRound.submissions.map((submission) => ({
-            id: submission._id,
-            memeIndex: submission.memeIndex,
-            captions: submission.captions,
+    
+        // Process submissions to get meme URLs
+        const anonymizedSubmissions = await Promise.all(currentRound.submissions.map(async (submission) => {
+            const user = await User.findById(submission.userId);
+            const userMemes = JSON.parse(user.currentMemes);
+            
+            return {
+                id: submission._id,
+                memeIndex: userMemes[submission.memeIndex].imageUrl,
+                captions: submission.captions,
+            };
         }));
-
+    
         this.io.to(this.gameId.toString()).emit("startJudging", {
             submissions: anonymizedSubmissions,
             timeLimit: 60000,
         });
-
+    
         this.judgingTimer = setTimeout(async () => {
             try {
                 const updatedRound = await Round.findById(currentRound._id);
@@ -234,20 +241,26 @@ class MemeRound {
 
         game.leaderboard.sort((a, b) => b.score - a.score);
 
+        // Process submissions to include only meme URLs and captions
+        const processedSubmissions = await Promise.all(currentRound.submissions.map(async (sub) => {
+            const userMemes = JSON.parse(sub.userId.currentMemes);
+            return {
+                id: sub._id,
+                memeUrl: userMemes[sub.memeIndex].imageUrl,
+                captions: sub.captions
+            };
+        }));
+
         const isGameFinished = game.currentRound >= game.settings.rounds;
 
         if (isGameFinished) {
             game.state = "finished";
             activeRounds.delete(currentRound._id.toString());
 
-            //Maybe only lb here?
             this.io.to(this.gameId.toString()).emit("gameFinished", {
                 leaderboard: game.leaderboard,
                 roundResults: {
-                    submissions: currentRound.submissions.map((sub) => ({
-                        ...sub.toObject(),
-                        position: sortedSubmissions.findIndex((s) => s.submissionId === sub._id.toString()) + 1,
-                    })),
+                    submissions: processedSubmissions,
                     scores: sortedSubmissions.map((s, index) => ({
                         submissionId: s.submissionId,
                         score: this.calculatePositionScore(index, totalPlayers),
@@ -258,10 +271,7 @@ class MemeRound {
         } else {
             this.io.to(this.gameId.toString()).emit("roundResults", {
                 roundNumber: this.roundNumber,
-                submissions: currentRound.submissions.map((sub) => ({
-                    ...sub.toObject(),
-                    position: sortedSubmissions.findIndex((s) => s.submissionId === sub._id.toString()) + 1,
-                })),
+                submissions: processedSubmissions,
                 scores: sortedSubmissions.map((s, index) => ({
                     submissionId: s.submissionId,
                     score: this.calculatePositionScore(index, totalPlayers),

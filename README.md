@@ -322,6 +322,7 @@ All game endpoints are prefixed with `/api/games/`.
     leaderboard: [
       {
         userId: string,
+        username: string,
         score: number
       }
     ],

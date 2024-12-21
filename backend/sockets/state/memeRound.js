@@ -227,6 +227,12 @@ class MemeRound {
         currentRound.status = "completed";
         await currentRound.save();
 
+        // Create a Map to store username lookup for each userId
+        const userMap = new Map();
+        currentRound.submissions.forEach((submission) => {
+            userMap.set(submission.userId._id.toString(), submission.userId.username);
+        });
+
         currentRound.submissions.forEach((submission) => {
             const playerIndex = game.leaderboard.findIndex((entry) => entry.userId.equals(submission.userId._id));
             if (playerIndex !== -1) {
@@ -234,6 +240,7 @@ class MemeRound {
             } else {
                 game.leaderboard.push({
                     userId: submission.userId._id,
+                    username: submission.userId.username,  // Add username to leaderboard entry
                     score: submission.score,
                 });
             }
@@ -258,7 +265,11 @@ class MemeRound {
             activeRounds.delete(currentRound._id.toString());
 
             this.io.to(this.gameId.toString()).emit("gameFinished", {
-                leaderboard: game.leaderboard,
+                leaderboard: game.leaderboard.map(entry => ({
+                    userId: entry.userId,
+                    username: entry.username,  // Include username in the emitted data
+                    score: entry.score
+                })),
                 roundResults: {
                     submissions: processedSubmissions,
                     scores: sortedSubmissions.map((s, index) => ({

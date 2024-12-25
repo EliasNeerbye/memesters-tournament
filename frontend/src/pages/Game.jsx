@@ -560,13 +560,23 @@ const MemeGameApp = () => {
               {gameState.submissions.map((submission, index) => (
                 <div
                   key={submission.id}
-                  className="p-4 bg-gray-700 rounded-lg space-y-2"
+                  className="p-4 bg-gray-700 rounded-lg space-y-4"
                 >
-                  <p className="font-semibold">Submission {index + 1}</p>
-                  <p className="text-gray-400">Meme: {submission.memeIndex}</p>
-                  <p className="text-gray-400">
-                    Captions: {submission.captions.join(", ")}
-                  </p>
+                  <div className="space-y-2">
+                    <p className="font-semibold">Submission {index + 1}</p>
+                    <img
+                      src={submission.memeIndex}
+                      alt={`Submission ${index + 1}`}
+                      className="w-full rounded-lg"
+                    />
+                    <div className="mt-2 text-gray-400">
+                      {submission.captions.map((caption, i) => (
+                        <p key={i} className="text-center font-medium">
+                          {caption}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
                   <input
                     type="number"
                     min="1"
@@ -617,10 +627,10 @@ const MemeGameApp = () => {
                           #{submission.position}
                         </span>
                         <span className="text-green-400">
-                          Score:{" "}
+                          Score: {console.log("roundResults:", roundResults)}
                           {
                             roundResults.scores.find(
-                              (s) => s.submissionId === submission._id
+                              (s) => s.submissionId === submission.id
                             )?.score
                           }
                         </span>
@@ -752,7 +762,10 @@ const MemeGameApp = () => {
                 <p className="text-gray-300">
                   <strong>Common Issues</strong>
                   <br />
-                  <p>If you are unable to join or create a game try pressing leave and then join or create</p>
+                  <p>
+                    If you are unable to join or create a game try pressing
+                    leave and then join or create
+                  </p>
                   <p></p>
                 </p>
               </div>

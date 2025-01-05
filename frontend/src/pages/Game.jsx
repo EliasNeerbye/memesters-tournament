@@ -101,6 +101,10 @@ const MemeGameApp = () => {
     });
 
     newSocket.on("roundResults", (data) => {
+      setGameState((prev) => ({
+        ...prev,
+        currentRound: { ...prev.currentRound, status: "results" },
+      }));
       setRoundResults(data);
       logEvent("roundResults", `Round ${data.roundNumber} results are in!`);
     });
@@ -117,6 +121,9 @@ const MemeGameApp = () => {
         currentRound: { ...data, status: "submitting" },
         memeTemplates: data.memes,
       }));
+      // Clear inputs on new round
+      setSelectedTemplate("");
+      setCaptions([]);
       logEvent("newRound", data);
     });
 
@@ -171,6 +178,18 @@ const MemeGameApp = () => {
 
     checkAuth();
   }, [navigate]);
+
+  useEffect(() => {
+    const handleUnload = () => {
+      if (socket && isConnected) {
+        socket.emit("leaveGame");
+      }
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+    };
+  }, [socket, isConnected]);
 
   // Reset game state
   const resetGameState = () => {
@@ -398,162 +417,170 @@ const MemeGameApp = () => {
         </div>
 
         {/* Game Management Section */}
-        <div className="bg-gray-800 p-6 rounded-lg space-y-4">
-          <h2 className="text-2xl font-semibold">Game Management</h2>
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="space-y-4">
-              <button
-                onClick={handleCreateGame}
-                className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
-              >
-                Create Game
-              </button>
-              <div className="flex space-x-2">
-                <input
-                  value={gameCode}
-                  onChange={(e) => setGameCode(e.target.value)}
-                  placeholder="Enter Game Code"
-                  className="flex-1 px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
+        {!gameState.currentRound && (
+          <div className="bg-gray-800 p-6 rounded-lg space-y-4">
+            <h2 className="text-2xl font-semibold">Game Management</h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(gameCode);
-                    logEvent("buttonClick", "Copy Game Code button clicked");
-                  }}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors duration-300"
+                  onClick={handleCreateGame}
+                  className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
                 >
-                  Copy
+                  Create Game
+                </button>
+                <div className="flex space-x-2">
+                  <input
+                    value={gameCode}
+                    onChange={(e) => setGameCode(e.target.value)}
+                    placeholder="Enter Game Code"
+                    className="flex-1 px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(gameCode);
+                      logEvent("buttonClick", "Copy Game Code button clicked");
+                    }}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors duration-300"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <button
+                  onClick={handleJoinGame}
+                  className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
+                >
+                  Join Game
                 </button>
               </div>
-              <button
-                onClick={handleJoinGame}
-                className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
-              >
-                Join Game
-              </button>
-            </div>
 
-            <div className="space-y-4">
-              <button
-                onClick={handleLeaveGame}
-                className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors duration-300"
-              >
-                Leave Game
-              </button>
-              <div className="flex space-x-2">
-                <input
-                  value={userToRemove}
-                  onChange={(e) => setUserToRemove(e.target.value)}
-                  placeholder="Username to Remove"
-                  className="flex-1 px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
+              <div className="space-y-4">
                 <button
-                  onClick={handleRemoveUser}
-                  className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors duration-300"
+                  onClick={handleLeaveGame}
+                  className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors duration-300"
                 >
-                  Remove User
+                  Leave Game
                 </button>
+                <div className="flex space-x-2">
+                  <input
+                    value={userToRemove}
+                    onChange={(e) => setUserToRemove(e.target.value)}
+                    placeholder="Username to Remove"
+                    className="flex-1 px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <button
+                    onClick={handleRemoveUser}
+                    className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors duration-300"
+                  >
+                    Remove User
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Game Flow Controls */}
         <div className="bg-gray-800 p-6 rounded-lg space-y-4">
           <h2 className="text-2xl font-semibold">Game Flow</h2>
           <div className="flex space-x-4">
-            <button
-              onClick={handleStartGame}
-              className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors duration-300"
-            >
-              Start Game
-            </button>
+            {!gameState.currentRound && (
+              <button
+                onClick={handleStartGame}
+                className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg transition-colors duration-300"
+              >
+                Start Game
+              </button>
+            )}
+
             <button
               onClick={handleFinishGame}
               className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition-colors duration-300"
             >
               End Game
             </button>
-            <button
-              onClick={handleStartNewRound}
-              className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors duration-300"
-            >
-              Next Round
-            </button>
-          </div>
-        </div>
 
-        {/* Gameplay Section */}
-        <div className="bg-gray-800 p-6 rounded-lg space-y-4">
-          <h2 className="text-2xl font-semibold">Create Your Meme</h2>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {gameState.memeTemplates.map((template) => (
-                <div
-                  key={template.id}
-                  onClick={() => setSelectedTemplate(template.id)}
-                  className={`relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 ${
-                    selectedTemplate === template.id
-                      ? "ring-4 ring-purple-500 scale-105"
-                      : "hover:ring-2 hover:ring-purple-400 hover:scale-105"
-                  }`}
-                >
-                  <img
-                    src={template.imageUrl}
-                    alt={template.name}
-                    className="w-full h-40 object-cover"
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
-                    <p className="text-sm text-white text-center truncate">
-                      {template.name}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {selectedTemplate && (
-              <div className="space-y-4">
-                <img
-                  src={
-                    gameState.memeTemplates.find(
-                      (t) => t.id === selectedTemplate
-                    )?.imageUrl
-                  }
-                  alt="Selected Meme Template"
-                  className="max-w-md mx-auto rounded-lg"
-                />
-                {Array.from({
-                  length:
-                    gameState.memeTemplates.find(
-                      (t) => t.id === selectedTemplate
-                    )?.lines || 2,
-                }).map((_, index) => (
-                  <input
-                    key={index}
-                    value={captions[index] || ""}
-                    onChange={(e) => {
-                      const newCaptions = [...captions];
-                      newCaptions[index] = e.target.value;
-                      setCaptions(newCaptions);
-                    }}
-                    placeholder={`Caption ${index + 1}`}
-                    className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                ))}
-                <button
-                  onClick={handleSubmitMeme}
-                  className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
-                >
-                  Submit Meme
-                </button>
-              </div>
+            {gameState.currentRound?.status === "results" && (
+              <button
+                onClick={handleStartNewRound}
+                className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors duration-300"
+              >
+                Next Round
+              </button>
             )}
           </div>
         </div>
 
+        {/* Gameplay Section */}
+        {gameState.currentRound?.status === "submitting" && (
+          <div className="bg-gray-800 p-6 rounded-lg space-y-4">
+            <h2 className="text-2xl font-semibold">Create Your Meme</h2>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {gameState.memeTemplates.map((template) => (
+                  <div
+                    key={template.id}
+                    onClick={() => setSelectedTemplate(template.id)}
+                    className={`relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 ${
+                      selectedTemplate === template.id
+                        ? "ring-4 ring-purple-500 scale-105"
+                        : "hover:ring-2 hover:ring-purple-400 hover:scale-105"
+                    }`}
+                  >
+                    <img
+                      src={template.imageUrl}
+                      alt={template.name}
+                      className="w-full h-40 object-cover"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
+                      <p className="text-sm text-white text-center truncate">
+                        {template.name}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {selectedTemplate && (
+                <div className="space-y-4">
+                  <img
+                    src={
+                      gameState.memeTemplates.find(
+                        (t) => t.id === selectedTemplate
+                      )?.imageUrl
+                    }
+                    alt="Selected Meme Template"
+                    className="max-w-md mx-auto rounded-lg"
+                  />
+                  {Array.from({
+                    length:
+                      gameState.memeTemplates.find((t) => t.id === selectedTemplate)?.lines || 2,
+                  }).map((_, index) => (
+                    <input
+                      key={index}
+                      value={captions[index] || ""}
+                      onChange={(e) => {
+                        const newCaptions = [...captions];
+                        newCaptions[index] = e.target.value;
+                        setCaptions(newCaptions);
+                      }}
+                      placeholder={`Caption ${index + 1}`}
+                      className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  ))}
+                  <button
+                    onClick={handleSubmitMeme}
+                    className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
+                  >
+                    Submit Meme
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Voting Section */}
-        {gameState.submissions.length > 0 && (
+        {gameState.currentRound?.status === "judging" && gameState.submissions.length > 0 && (
           <div className="bg-gray-800 p-6 rounded-lg space-y-4">
             <h2 className="text-2xl font-semibold">Vote for Memes</h2>
             <div className="grid md:grid-cols-2 gap-4">
@@ -604,13 +631,14 @@ const MemeGameApp = () => {
         )}
 
         {/* Results Section */}
-        {(roundResults || leaderboard.length > 0) && (
+        {(gameState.currentRound?.status === "results" || leaderboard.length > 0) && (
           <div className="bg-gray-800 p-6 rounded-lg space-y-4">
             <h2 className="text-2xl font-semibold">
               {leaderboard.length > 0 ? "Final Results" : "Round Results"}
             </h2>
 
             {/* Submissions Results */}
+            // ...existing code...
             {roundResults && (
               <div className="space-y-4">
                 <h3 className="text-xl text-purple-400">
@@ -627,12 +655,9 @@ const MemeGameApp = () => {
                           #{submission.position}
                         </span>
                         <span className="text-green-400">
-                          Score: {console.log("roundResults:", roundResults)}
-                          {
-                            roundResults.scores.find(
-                              (s) => s.submissionId === submission.id
-                            )?.score
-                          }
+                          Score: {roundResults.scores.find(
+                            (s) => s.submissionId === submission.id
+                          )?.score}
                         </span>
                       </div>
                       <p className="text-gray-300 mt-2">
@@ -643,6 +668,7 @@ const MemeGameApp = () => {
                 </div>
               </div>
             )}
+            // ...existing code...
 
             {/* Leaderboard */}
             {leaderboard.length > 0 && (

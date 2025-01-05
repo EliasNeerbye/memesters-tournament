@@ -416,6 +416,58 @@ const MemeGameApp = () => {
           </div>
         </div>
 
+        {/* Game Status */}
+        {gameState.currentRound && (
+          <div className="bg-gray-800 p-4 rounded-lg">
+            <div className="flex justify-between items-center">
+              {/* Game Status */}
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium text-purple-400">Game Status</h3>
+                <div className="flex items-center space-x-4">
+                  <div>
+                    <span className="text-gray-400">Players:</span>{" "}
+                    <span className="font-medium">{players.length}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Round:</span>{" "}
+                    <span className="font-medium">
+                      {gameState.currentRound?.roundNumber || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Status:</span>{" "}
+                    <span className="font-medium capitalize">
+                      {gameState.currentRound?.status || "waiting"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Game Progress */}
+              <div className="flex items-center space-x-2">
+                {["Share", "Vote", "Results"].map((stage, index) => (
+                  <React.Fragment key={stage}>
+                    <div
+                      className={`px-3 py-1 rounded ${
+                        (gameState.currentRound?.status === "submitting" && stage === "Share") ||
+                        (gameState.currentRound?.status === "judging" && stage === "Vote") ||
+                        (gameState.currentRound?.status === "results" && stage === "Results")
+                          ? "bg-purple-500 text-white"
+                          : "bg-gray-700 text-gray-400"
+                      }`}
+                    >
+                      {stage}
+                    </div>
+                    {index < 2 && (
+                      <div className="w-4 h-px bg-gray-600"/>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Game Management Section */}
         {!gameState.currentRound && (
           <div className="bg-gray-800 p-6 rounded-lg space-y-4">
@@ -553,7 +605,9 @@ const MemeGameApp = () => {
                   />
                   {Array.from({
                     length:
-                      gameState.memeTemplates.find((t) => t.id === selectedTemplate)?.lines || 2,
+                      gameState.memeTemplates.find(
+                        (t) => t.id === selectedTemplate
+                      )?.lines || 2,
                   }).map((_, index) => (
                     <input
                       key={index}
@@ -580,65 +634,66 @@ const MemeGameApp = () => {
         )}
 
         {/* Voting Section */}
-        {gameState.currentRound?.status === "judging" && gameState.submissions.length > 0 && (
-          <div className="bg-gray-800 p-6 rounded-lg space-y-4">
-            <h2 className="text-2xl font-semibold">Vote for Memes</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              {gameState.submissions.map((submission, index) => (
-                <div
-                  key={submission.id}
-                  className="p-4 bg-gray-700 rounded-lg space-y-4"
-                >
-                  <div className="space-y-2">
-                    <p className="font-semibold">Submission {index + 1}</p>
-                    <img
-                      src={submission.memeIndex}
-                      alt={`Submission ${index + 1}`}
-                      className="w-full rounded-lg"
-                    />
-                    <div className="mt-2 text-gray-400">
-                      {submission.captions.map((caption, i) => (
-                        <p key={i} className="text-center font-medium">
-                          {caption}
-                        </p>
-                      ))}
+        {gameState.currentRound?.status === "judging" &&
+          gameState.submissions.length > 0 && (
+            <div className="bg-gray-800 p-6 rounded-lg space-y-4">
+              <h2 className="text-2xl font-semibold">Vote for Memes</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {gameState.submissions.map((submission, index) => (
+                  <div
+                    key={submission.id}
+                    className="p-4 bg-gray-700 rounded-lg space-y-4"
+                  >
+                    <div className="space-y-2">
+                      <p className="font-semibold">Submission {index + 1}</p>
+                      <img
+                        src={submission.memeIndex}
+                        alt={`Submission ${index + 1}`}
+                        className="w-full rounded-lg"
+                      />
+                      <div className="mt-2 text-gray-400">
+                        {submission.captions.map((caption, i) => (
+                          <p key={i} className="text-center font-medium">
+                            {caption}
+                          </p>
+                        ))}
+                      </div>
                     </div>
+                    <input
+                      type="number"
+                      min="1"
+                      max={gameState.submissions.length}
+                      value={voteRankings[submission.id] || ""}
+                      onChange={(e) =>
+                        setVoteRankings((prev) => ({
+                          ...prev,
+                          [submission.id]: e.target.value,
+                        }))
+                      }
+                      placeholder={`Rank (1-${gameState.submissions.length})`}
+                      className="w-full px-4 py-2 bg-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
                   </div>
-                  <input
-                    type="number"
-                    min="1"
-                    max={gameState.submissions.length}
-                    value={voteRankings[submission.id] || ""}
-                    onChange={(e) =>
-                      setVoteRankings((prev) => ({
-                        ...prev,
-                        [submission.id]: e.target.value,
-                      }))
-                    }
-                    placeholder={`Rank (1-${gameState.submissions.length})`}
-                    className="w-full px-4 py-2 bg-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-              ))}
-              <button
-                onClick={handleSubmitVote}
-                className="col-span-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
-              >
-                Submit Votes
-              </button>
+                ))}
+                <button
+                  onClick={handleSubmitVote}
+                  className="col-span-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
+                >
+                  Submit Votes
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Results Section */}
-        {(gameState.currentRound?.status === "results" || leaderboard.length > 0) && (
+        {(gameState.currentRound?.status === "results" ||
+          leaderboard.length > 0) && (
           <div className="bg-gray-800 p-6 rounded-lg space-y-4">
             <h2 className="text-2xl font-semibold">
               {leaderboard.length > 0 ? "Final Results" : "Round Results"}
             </h2>
 
             {/* Submissions Results */}
-            // ...existing code...
             {roundResults && (
               <div className="space-y-4">
                 <h3 className="text-xl text-purple-400">
@@ -655,11 +710,19 @@ const MemeGameApp = () => {
                           #{submission.position}
                         </span>
                         <span className="text-green-400">
-                          Score: {roundResults.scores.find(
-                            (s) => s.submissionId === submission.id
-                          )?.score}
+                          Score:{" "}
+                          {
+                            roundResults.scores.find(
+                              (s) => s.submissionId === submission.id
+                            )?.score
+                          }
                         </span>
                       </div>
+                      <img
+                        src={submission.memeUrl}
+                        alt={`Meme ${submission.position}`}
+                        className="w-full rounded-lg mt-2"
+                      />
                       <p className="text-gray-300 mt-2">
                         Captions: {submission.captions.join(", ")}
                       </p>
@@ -668,7 +731,6 @@ const MemeGameApp = () => {
                 </div>
               </div>
             )}
-            // ...existing code...
 
             {/* Leaderboard */}
             {leaderboard.length > 0 && (

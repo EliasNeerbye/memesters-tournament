@@ -653,42 +653,43 @@ const MemeGameApp = () => {
             <div className="bg-gray-800 p-6 rounded-lg space-y-4">
               <h2 className="text-2xl font-semibold">Vote for Memes</h2>
               <div className="grid md:grid-cols-2 gap-4">
-                {gameState.submissions.map((submission, index) => (
-                  <div
-                    key={submission.id}
-                    className="p-4 bg-gray-700 rounded-lg space-y-4"
-                  >
-                    <div className="space-y-2">
-                      <p className="font-semibold">Submission {index + 1}</p>
-                      <img
-                        src={submission.memeIndex}
-                        alt={`Submission ${index + 1}`}
-                        className="w-full rounded-lg"
-                      />
-                      <div className="mt-2 text-gray-400">
-                        {submission.captions.map((caption, i) => (
-                          <p key={i} className="text-center font-medium">
-                            {caption}
-                          </p>
-                        ))}
+                {gameState.submissions.map((submission, index) => {
+                  const extension = submission.memeIndex.split(".")[3];
+                  const path = submission.memeIndex.split(".")[2];
+                  const template = path.split("/")[2];
+                  return (
+                    <div
+                      key={submission.id}
+                      className="p-4 bg-gray-700 rounded-lg space-y-4"
+                    >
+                      <div className="space-y-2">
+                        <p className="font-semibold">Submission {index + 1}</p>
+                        <img
+                          src={`https://api.memegen.link/images/${template}/${submission.captions
+                            .map((caption) => encodeURIComponent(caption || "_"))
+                            .join("/")}.${extension}`}
+                          alt={`Submission ${index + 1}`}
+                          className="w-full rounded-lg"
+                        />
+
                       </div>
+                      <input
+                        type="number"
+                        min="1"
+                        max={gameState.submissions.length}
+                        value={voteRankings[submission.id] || ""}
+                        onChange={(e) =>
+                          setVoteRankings((prev) => ({
+                            ...prev,
+                            [submission.id]: e.target.value,
+                          }))
+                        }
+                        placeholder={`Rank (1-${gameState.submissions.length})`}
+                        className="w-full px-4 py-2 bg-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
                     </div>
-                    <input
-                      type="number"
-                      min="1"
-                      max={gameState.submissions.length}
-                      value={voteRankings[submission.id] || ""}
-                      onChange={(e) =>
-                        setVoteRankings((prev) => ({
-                          ...prev,
-                          [submission.id]: e.target.value,
-                        }))
-                      }
-                      placeholder={`Rank (1-${gameState.submissions.length})`}
-                      className="w-full px-4 py-2 bg-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
-                ))}
+                  );
+                })}
                 <button
                   onClick={handleSubmitVote}
                   className="col-span-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
@@ -714,37 +715,42 @@ const MemeGameApp = () => {
                   Round {roundResults.roundNumber} Rankings
                 </h3>
                 <div className="grid md:grid-cols-2 gap-4">
-                  {roundResults.submissions.map((submission) => (
-                    <div
-                      key={submission._id}
-                      className="p-4 bg-gray-700 rounded-lg"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xl font-bold">
-                          #{submission.position}
-                        </span>
-                        <span className="text-green-400">
-                          Score:{" "}
-                          {
-                            roundResults.scores.find(
+                  {roundResults.submissions.map((submission, index) => {
+                    console.log("submission: ", submission);
+                    const extension = submission.memeUrl.split(".")[3];
+                    const path = submission.memeUrl.split(".")[2];
+                    console.log("path: ", path);
+                    const template = path.split("/")[2];;
+                    return (
+                      <div
+                        key={submission._id}
+                        className="p-4 bg-gray-700 rounded-lg"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xl font-bold">
+                            #{submission.position}
+                          </span>
+                          <span className="text-green-400">
+                            Score: {roundResults.scores.find(
                               (s) => s.submissionId === submission.id
-                            )?.score
-                          }
-                        </span>
+                            )?.score}
+                          </span>
+                        </div>
+                        <img
+                          src={`https://api.memegen.link/images/${template}/${submission.captions.map(caption => encodeURIComponent(caption || "_")).join("/")}.${extension}`}
+                          alt={`Meme ${submission.position}`}
+                          className="w-full rounded-lg mt-2"
+                        />
+                        <p className="text-gray-300 mt-2">
+                          Captions: {submission.captions.join(", ")}
+                        </p>
                       </div>
-                      <img
-                        src={submission.memeUrl}
-                        alt={`Meme ${submission.position}`}
-                        className="w-full rounded-lg mt-2"
-                      />
-                      <p className="text-gray-300 mt-2">
-                        Captions: {submission.captions.join(", ")}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
+
 
             {/* Leaderboard */}
             {leaderboard.length > 0 && (

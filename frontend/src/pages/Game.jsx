@@ -23,6 +23,11 @@ const MemeGameApp = () => {
   const [roundResults, setRoundResults] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [showFAQ, setShowFAQ] = useState(false);
+  const backgroundAudio = new Audio("/baroque-summer-loop-244274.mp3");
+  const playingAudio = new Audio("/happy-pop-2-185287.mp3");
+  const winningAudio = new Audio("/you-win-sequence-2-183949.mp3");
+
+
 
   // Helper function to log events
   const logEvent = useCallback((type, data) => {
@@ -68,6 +73,11 @@ const MemeGameApp = () => {
     newSocket.on("connect", () => {
       setIsConnected(true);
       logEvent("Connection", "Connected to server");
+      setTimeout(() => {        
+        backgroundAudio.volume = 0.025;
+        backgroundAudio.loop = true;
+        backgroundAudio.play();
+      }, 1000);
     });
 
     newSocket.on("disconnect", () => {
@@ -426,7 +436,7 @@ const MemeGameApp = () => {
                 <div className="flex items-center space-x-4">
                   <div>
                     <span className="text-gray-400">Players:</span>{" "}
-                    <span className="font-medium">{players.length}</span>
+                    <span className="font-medium">{players.length+1}</span>
                   </div>
                   <div>
                     <span className="text-gray-400">Round:</span>{" "}
@@ -594,20 +604,21 @@ const MemeGameApp = () => {
 
               {selectedTemplate && (
                 <div className="space-y-4">
+                  {/* Generate meme URL dynamically based on captions */}
                   <img
-                    src={
-                      gameState.memeTemplates.find(
-                        (t) => t.id === selectedTemplate
-                      )?.imageUrl
-                    }
-                    alt="Selected Meme Template"
+                    src={`https://api.memegen.link/images/${selectedTemplate}/${captions
+                      .slice(0, gameState.memeTemplates.find(t => t.id === selectedTemplate)?.lines || 2)
+                      .map(caption => encodeURIComponent(caption || "_"))
+                      .join("/")}.png`}
+                    alt="Generated Meme"
                     className="max-w-md mx-auto rounded-lg"
                   />
+                  
+                  {/* Generate caption inputs based on the template's line count */}
                   {Array.from({
                     length:
-                      gameState.memeTemplates.find(
-                        (t) => t.id === selectedTemplate
-                      )?.lines || 2,
+                      gameState.memeTemplates.find((t) => t.id === selectedTemplate)
+                        ?.lines || 2,
                   }).map((_, index) => (
                     <input
                       key={index}
@@ -621,6 +632,7 @@ const MemeGameApp = () => {
                       className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   ))}
+
                   <button
                     onClick={handleSubmitMeme}
                     className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors duration-300"
@@ -632,6 +644,8 @@ const MemeGameApp = () => {
             </div>
           </div>
         )}
+
+
 
         {/* Voting Section */}
         {gameState.currentRound?.status === "judging" &&
